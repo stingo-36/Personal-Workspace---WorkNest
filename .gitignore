@@ -17,3 +17,7 @@ out/
 # Python bytecode (from the ui-ux-pro-max skill scripts)
 __pycache__/
 *.pyc
+
+# Neon backups — the backup script and its output stay on this machine only
+backups/
+scripts/backup-neon.mjs
