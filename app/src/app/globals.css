@@ -1029,12 +1029,13 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
 /* A level-2 heading opens a block of the page (Definition, Example, Exam
    keywords…). Body text and headings were the same ink, so on a long topic you
    couldn't see where one block ended — each opener is now a tinted band with a
-   blue rule, in the accent ink. Applies to the reader and the editor alike. */
+   blue rule. One colour for every block (per-block colours were tried and
+   dropped 2026-10-04). Applies to the reader and the editor alike. */
 .note-prose [data-level="2"] {
-  color: var(--c-accent-text);
+  color: var(--c-status-progress-fg);
   font-weight: 700;
-  background-color: var(--c-card-navy);
-  border-left: 3px solid var(--c-accent-text);
+  background-color: var(--c-status-progress-bg);
+  border-left: 3px solid var(--c-status-progress);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   padding: 0.4em 0.8em;
 }
@@ -1042,27 +1043,12 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
   margin-top: 2.25em;
 }
 
-/* Each standard topic block has its own hue (tone set by the heading's text in
-   editor-extensions.ts), reusing the app's checked tint pairs — label on tint
-   is 6.2:1 or better. Other level-2 headings keep the blue band above. */
-.note-prose [data-level="2"][data-tone] {
-  color: var(--tone-fg);
-  background-color: var(--tone-bg);
-  border-left-color: var(--tone-rule);
-}
-.note-prose [data-tone="definition"] { --tone-fg: var(--c-status-progress-fg); --tone-bg: var(--c-status-progress-bg); --tone-rule: var(--c-status-progress); }
-.note-prose [data-tone="simple"] { --tone-fg: var(--c-status-completed-fg); --tone-bg: var(--c-status-completed-bg); --tone-rule: var(--c-status-completed); }
-.note-prose [data-tone="example"] { --tone-fg: var(--c-status-testing-fg); --tone-bg: var(--c-status-testing-bg); --tone-rule: var(--c-status-testing); }
-.note-prose [data-tone="keywords"] { --tone-fg: var(--c-status-waiting-fg); --tone-bg: var(--c-status-waiting-bg); --tone-rule: var(--c-status-waiting); }
-.note-prose [data-tone="more"] { --tone-fg: var(--c-status-closed-fg); --tone-bg: var(--c-status-closed-bg); --tone-rule: var(--c-status-closed); }
-.note-prose [data-tone="remember"] { --tone-fg: var(--c-status-blocked-fg); --tone-bg: var(--c-status-blocked-bg); --tone-rule: var(--c-status-blocked); }
-
 /* Level 3 marks a sub-topic inside a block: darker and bolder than body text. */
 .note-prose [data-level="3"] {
   font-weight: 700;
   color: var(--c-text);
   padding-bottom: 0.2em;
-  border-bottom: 1px solid var(--c-border);
+  border-bottom: 1px solid var(--c-border-strong);
 }
 
 /* inline ------------------------------------------------------------------ */
@@ -1180,7 +1166,7 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
 
 .note-prose hr {
   border: 0;
-  border-top: 1px solid var(--c-border);
+  border-top: 2px solid var(--c-border-strong);
   margin-block: 1.8em;
 }
 

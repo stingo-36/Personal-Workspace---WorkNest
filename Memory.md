@@ -27,6 +27,8 @@
 
 Format: **date — decision.** Why. *Rejected:* alternatives.
 
+**2026-10-04 — One colour for note block headings; darker topic dividers.** The user tried a different colour per block (Definition blue, Example orange…) and asked for the Definition blue everywhere instead; the faint 1px `--c-border` line between topics was too light to tell topics apart, now 2px `--c-border-strong`. *Rejected:* per-block colours (`data-tone`).
+
 **2026-10-04 — Note jumps use our own frame-by-frame scroll, and lazy pages wait for it to land.**
 A 228-page imported notebook made topic jumps stutter (~10fps: every page flown past mounted a
 TipTap editor, and the whole reader re-rendered for each heading crossed) and land off target
@@ -524,7 +526,7 @@ is done on the real rendered app.
 
 `YYYY-MM-DD — what changed — key files`
 
-- 2026-10-04 — Notes: level-2 page headings shown as tinted accent bands (sections of a topic easy to spot); edit page *At a glance* scrolls on its own; smooth, snap-free topic jumps in reader and editor (frame-by-frame chase, lazy mounts paused mid-jump, height estimates for unmounted pages, memoised reader column, lazy page editors); standard topic block headings (Definition, Simple words, Example, Exam keywords, More/Key points, Remember it) each get their own colour via `data-tone` — `globals.css`, `components/notes/editor-extensions.ts`, `components/notes/{smooth-scroll,doc-height}.ts`, `NoteReader.tsx`, `NoteViewer.tsx`, `NoteForm.tsx`, `PageEditor.tsx`
+- 2026-10-04 — Notes: level-2 page headings shown as tinted accent bands (sections of a topic easy to spot); edit page *At a glance* scrolls on its own; smooth, snap-free topic jumps in reader and editor (frame-by-frame chase, lazy mounts paused mid-jump, height estimates for unmounted pages, memoised reader column, lazy page editors); block headings all use one blue band (per-block colours tried and dropped the same day), topic dividers and `hr` darkened to 2px `--c-border-strong` — `globals.css`, `components/notes/{smooth-scroll,doc-height}.ts`, `NoteReader.tsx`, `NoteViewer.tsx`, `NoteForm.tsx`, `PageEditor.tsx`
 
 - 2026-10-03 — Homepage nav/footer links renamed to Workspace · AI summaries · Get started with matching anchors (`#workspace`, `#ai-summaries`, `#get-started`; verified each lands on its screen); docs audit: Memory snapshot rewritten, stale gotcha removed, Architecture layout fixed (23 migrations); removed dead `app/scripts/generate-banner-scene.py` and unused `images.qualities` in `next.config.ts` — `components/home/home-page.tsx`, `next.config.ts`, docs
 - 2026-10-03 — Homepage one-section-per-scroll restored with native snapping (`snap-stop: always`), now without the animation load that made it jerky — `(marketing)/home.css`

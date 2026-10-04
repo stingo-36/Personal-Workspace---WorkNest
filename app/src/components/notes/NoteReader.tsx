@@ -222,13 +222,13 @@ export function NoteReader({
             </header>
 
             {section.pages.length === 0 ? (
-              <p className="border-b border-border py-8 text-sm text-text-muted">No pages in this section.</p>
+              <p className="border-b-2 border-border-strong py-8 text-sm text-text-muted">No pages in this section.</p>
             ) : (
               section.pages.map((page, index) => {
                 // Only what is plausibly on screen at load mounts its editor eagerly.
                 const eager = pageNumber++ < 2;
                 return (
-                  <article key={page.id} id={pageAnchor(page.id)} aria-labelledby={`${pageAnchor(page.id)}-title`} className="border-b border-border py-8 md:py-12">
+                  <article key={page.id} id={pageAnchor(page.id)} aria-labelledby={`${pageAnchor(page.id)}-title`} className="border-b-2 border-border-strong py-8 md:py-12">
                     <h3 id={`${pageAnchor(page.id)}-title`} className="mb-5 flex items-baseline gap-3 text-2xl font-semibold tracking-[-0.02em] text-balance text-text md:text-3xl">
                       <span aria-hidden="true" className="shrink-0 font-medium text-text-subtle tabular-nums">
                         {sectionIndex + 1}.{index + 1}
