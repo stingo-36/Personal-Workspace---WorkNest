@@ -94,7 +94,7 @@ export default async function WorkLogViewPage({ params }: { params: Promise<{ wo
       {/* Header */}
       <header className="wl-card wl-hero motion-page-enter flex flex-col gap-3 px-4 py-4 md:px-6">
         <div className="flex items-center justify-between gap-3">
-          <Link href="/work-logs" className="inline-flex items-center gap-1 text-sm font-semibold text-text-muted hover:text-text">
+          <Link href="/work-logs" className="tap-area inline-flex items-center gap-1 text-sm font-semibold text-text-muted hover:text-text">
             <ChevronLeft className="size-4" aria-hidden="true" />All work logs
           </Link>
           <nav aria-label="Other work logs" className="flex items-center gap-1.5">

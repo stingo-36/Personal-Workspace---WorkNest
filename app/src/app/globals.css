@@ -710,40 +710,6 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
   --font-mono: var(--font-geist-mono), "Geist Mono", "SFMono-Regular",
     "SF Mono", Menlo, Consolas, monospace;
 
-  /* ---- Type scale (dense-UI: base is 14px, not 16px) ---- */
-  --text-2xs: 0.6875rem;    /* 11 — uppercase micro-labels only, +0.06em tracking */
-  --text-2xs--line-height: 1rem;
-  --text-xs: 0.75rem;       /* 12 — meta, timestamps, table captions */
-  --text-xs--line-height: 1.125rem;
-  --text-sm: 0.8125rem;     /* 13 — table cells, badges, sidebar */
-  --text-sm--line-height: 1.25rem;
-  --text-base: 0.875rem;    /* 14 — app default body */
-  --text-base--line-height: 1.4286;
-  --text-md: 0.9375rem;     /* 15 — long-form: work log notes, ticket descriptions */
-  --text-md--line-height: 1.6;
-  --text-lg: 1rem;          /* 16 — card titles, section leads */
-  --text-lg--line-height: 1.5rem;
-  --text-xl: 1.125rem;      /* 18 — h3 */
-  --text-xl--line-height: 1.625rem;
-  --text-2xl: 1.25rem;      /* 20 — h2 */
-  --text-2xl--line-height: 1.75rem;
-  --text-3xl: 1.5rem;       /* 24 — h1 / page title */
-  --text-3xl--line-height: 2rem;
-  --text-4xl: 1.875rem;     /* 30 — dashboard metric numerals */
-  --text-4xl--line-height: 2.25rem;
-  --text-5xl: 2.25rem;      /* 36 — auth screens only */
-  --text-5xl--line-height: 2.5rem;
-
-  /* Marketing display sizes — PUBLIC PAGES ONLY (app/(marketing)/**).
-     The app UI stops at --text-4xl; a landing hero needs real display type.
-     Tracking is tightened at these sizes via `tracking-tight`/`-tighter`. */
-  --text-6xl: 2.75rem;      /* 44 — marketing section headline (h2) */
-  --text-6xl--line-height: 1.08;
-  --text-7xl: 3.25rem;      /* 52 — marketing hero at md */
-  --text-7xl--line-height: 1.04;
-  --text-8xl: 3.75rem;      /* 60 — marketing hero at lg+ */
-  --text-8xl--line-height: 1.02;
-
   /* ---- Spacing: 4px base -> 4/8/12/16/24/32/48/64 via 1/2/3/4/6/8/12/16 ---- */
   --spacing: 0.25rem;
 
@@ -787,6 +753,67 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
   --motion-section: 400ms;
   --motion-reveal-y: 0.75rem;
   --motion-reveal-scale: 0.97;
+}
+
+/* Type scale in its own NON-inline @theme block: utilities read these through
+   var(), so the phone override below can raise the small sizes app-wide. (The
+   main block is `inline`, which bakes literal values into the classes.) */
+@theme {
+  /* ---- Type scale (dense-UI: base is 14px, not 16px) ---- */
+  --text-2xs: 0.6875rem;    /* 11 — uppercase micro-labels only, +0.06em tracking */
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;       /* 12 — meta, timestamps, table captions */
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.8125rem;     /* 13 — table cells, badges, sidebar */
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;    /* 14 — app default body */
+  --text-base--line-height: 1.4286;
+  --text-md: 0.9375rem;     /* 15 — long-form: work log notes, ticket descriptions */
+  --text-md--line-height: 1.6;
+  --text-lg: 1rem;          /* 16 — card titles, section leads */
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.125rem;      /* 18 — h3 */
+  --text-xl--line-height: 1.625rem;
+  --text-2xl: 1.25rem;      /* 20 — h2 */
+  --text-2xl--line-height: 1.75rem;
+  --text-3xl: 1.5rem;       /* 24 — h1 / page title */
+  --text-3xl--line-height: 2rem;
+  --text-4xl: 1.875rem;     /* 30 — dashboard metric numerals */
+  --text-4xl--line-height: 2.25rem;
+  --text-5xl: 2.25rem;      /* 36 — auth screens only */
+  --text-5xl--line-height: 2.5rem;
+
+  /* Marketing display sizes — PUBLIC PAGES ONLY (app/(marketing)/**).
+     The app UI stops at --text-4xl; a landing hero needs real display type.
+     Tracking is tightened at these sizes via `tracking-tight`/`-tighter`. */
+  --text-6xl: 2.75rem;      /* 44 — marketing section headline (h2) */
+  --text-6xl--line-height: 1.08;
+  --text-7xl: 3.25rem;      /* 52 — marketing hero at md */
+  --text-7xl--line-height: 1.04;
+  --text-8xl: 3.75rem;      /* 60 — marketing hero at lg+ */
+  --text-8xl--line-height: 1.02;
+}
+
+/* Phones (< 768px): the dense desktop scale reads small on a handheld screen,
+   so the body sizes step up one notch (11→12, 12→13, 13→14, 14→15, 15→16).
+   Headings and display sizes are unchanged. */
+@media (width < 48rem) {
+  :root {
+    --text-2xs: 0.75rem;
+    --text-xs: 0.8125rem;
+    --text-sm: 0.875rem;
+    --text-base: 0.9375rem;
+    --text-md: 1rem;
+  }
+
+  /* iOS Safari zooms the page when you tap a field whose text is under 16px.
+     Every field is 16px on phones so tapping one never zooms. */
+  input:not([type="checkbox"], [type="radio"], [type="range"]),
+  textarea,
+  select,
+  [contenteditable="true"] {
+    font-size: var(--text-lg) !important;
+  }
 }
 
 /* ============================== BASE LAYER ================================ */
@@ -940,6 +967,18 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
     animation: none;
   }
 
+}
+
+/* Touch area for small text-like controls ("1 overdue", "All work logs"):
+   an invisible box 8px above and below grows the tap target to about 36px
+   without moving anything. Use on controls with a little space around them. */
+.tap-area {
+  position: relative;
+}
+.tap-area::after {
+  content: "";
+  position: absolute;
+  inset: -0.5rem -0.25rem;
 }
 
 /* ---------------------------------------------------------------------------

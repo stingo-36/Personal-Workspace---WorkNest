@@ -156,7 +156,7 @@ Loaded in `app/src/app/layout.tsx` via `next/font` (self-hosted, no runtime Goog
 | Plus Jakarta Sans (+ italic) | `--font-jakarta` | Homepage, login, register body text |
 | DM Serif Display (+ italic) | `--font-dm-serif` | Homepage, login, register display type |
 
-**Type scale** (Tailwind `text-*`, 14px app base):
+**Type scale** (Tailwind `text-*`, 14px app base). **Phones (< 768px) step the body sizes up one notch** — 2xs 12, xs 13, sm 14, base 15, md 16 — and every form field (and the note editor) is 16px so iOS never zooms on focus (2026-10-04). The scale lives in its own non-`inline` `@theme` block so utilities read it via `var()` and the phone override in `globals.css` applies app-wide; headings and display sizes don't change.
 
 | Class | Size | Use |
 |---|---|---|
@@ -307,7 +307,8 @@ What the eye should hit, in order — one step per level, never two the same siz
   height, sticky asides at `top-20`) assumes 4rem.
 - **Page rhythm:** page title block → 32px (`mb-8`) → content. Sections inside a page
   are separated by 20–24px (`gap-5`/`gap-6`).
-- **Spacing:** Tailwind 4px scale. Page padding `px-3 md:px-5 lg:px-8`.
+- **Spacing:** Tailwind 4px scale. Page padding `px-4 md:px-5 lg:px-8` (16px on phones since 2026-10-04; the nav and any edge-to-edge sticky bar use the same values as negative margins).
+- **Touch targets:** controls are at least 32px on phones. Text-like controls that can't grow visually ("1 overdue", "All work logs") use `.tap-area`, an invisible 8px box above/below that enlarges the hit area without moving layout; resource row icon buttons are `size-9 md:size-7`.
 - **Radius:** `xs 3` dots · `sm 4` badges · `md 6` inputs/menu items · `lg 8` panels ·
   `xl 12` dialogs · `2xl 16` max. Buttons and chips are `rounded-full`. Work-log cards
   (`.wl-card`) use 16px.

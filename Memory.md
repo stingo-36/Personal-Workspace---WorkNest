@@ -27,6 +27,15 @@
 
 Format: **date — decision.** Why. *Rejected:* alternatives.
 
+**2026-10-04 — Phone type scale steps up one notch; 16px phone gutter; 16px form fields.**
+User asked for the whole site to read well on phones. An audit of every page at 360/375px found
+no sideways scrolling but 11–14px body text, 12px page gutters, fields under 16px (iOS zooms on
+focus) and 20–28px tap targets. Fix is global, not per page: the type scale moved to a separate
+non-inline `@theme` block and `@media (width < 48rem)` raises 2xs→md by one step; fields get
+`--text-lg` (16px) there; main/nav gutter `px-4`; `.tap-area` for text-like controls.
+*Rejected:* scaling the root font-size (also grows spacing and breaks fitted layouts);
+per-component font classes (hundreds of call sites).
+
 **2026-10-04 — One colour for note block headings; darker topic dividers.** The user tried a different colour per block (Definition blue, Example orange…) and asked for the Definition blue everywhere instead; the faint 1px `--c-border` line between topics was too light to tell topics apart, now 2px `--c-border-strong`. *Rejected:* per-block colours (`data-tone`).
 
 **2026-10-04 — Note jumps use our own frame-by-frame scroll, and lazy pages wait for it to land.**
@@ -525,6 +534,8 @@ is done on the real rendered app.
 ## Changelog
 
 `YYYY-MM-DD — what changed — key files`
+
+- 2026-10-04 — Mobile pass across the site: phone type scale +1 step, 16px fields (no iOS zoom), 16px gutters, larger tap targets (`.tap-area`, resource icon buttons); audited every page at 360/375px — `globals.css`, `shell/app-shell.tsx`, `shell/app-nav.tsx`, `notes/NoteReader.tsx`, `notes/NoteForm.tsx`, `tracker/tracker-board.tsx`, `work-log/*`, `resources/resource-library.tsx`
 
 - 2026-10-04 — Notes: level-2 page headings shown as tinted accent bands (sections of a topic easy to spot); edit page *At a glance* scrolls on its own; smooth, snap-free topic jumps in reader and editor (frame-by-frame chase, lazy mounts paused mid-jump, height estimates for unmounted pages, memoised reader column, lazy page editors); block headings all use one blue band (per-block colours tried and dropped the same day), topic dividers and `hr` darkened to 2px `--c-border-strong` — `globals.css`, `components/notes/{smooth-scroll,doc-height}.ts`, `NoteReader.tsx`, `NoteViewer.tsx`, `NoteForm.tsx`, `PageEditor.tsx`
 

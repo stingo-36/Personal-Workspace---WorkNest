@@ -276,7 +276,7 @@ export function NoteForm({
         <input type="hidden" name="id" value={defaults.id} />
       ) : null}
 
-      <div ref={barRef} className="sticky -top-6 z-30 -mx-5 -mt-6 mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border bg-bg/95 px-5 pb-3 pt-6 backdrop-blur-[12px] md:mb-6 md:pb-3.5 md:-top-8 md:-mx-8 md:-mt-8 md:px-8 md:pt-8">
+      <div ref={barRef} className="sticky -top-6 z-30 -mx-4 -mt-6 mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border bg-bg/95 px-4 pb-3 pt-6 backdrop-blur-[12px] md:mb-6 md:pb-3.5 md:-top-8 md:-mx-5 md:-mt-8 md:px-5 md:pt-8 lg:-mx-8 lg:px-8">
         <div className="min-w-0 flex-1">
           {/* The page title above already says "Edit note" — the bar names the note. */}
           <p className="truncate text-md font-semibold tracking-[-0.03em] text-text">
