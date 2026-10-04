@@ -2,9 +2,12 @@
 
 import { Reorder, useDragControls } from "framer-motion";
 import { ChevronDown, CornerUpRight, Copy, FileText, GripVertical, Trash2 } from "lucide-react";
-import { useId } from "react";
+import type { JSONContent } from "@tiptap/core";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { estimateDocHeight } from "@/components/notes/doc-height";
 import { RichTextEditor } from "@/components/notes/RichTextEditor";
+import { isJumping, NOTE_SCROLL_END } from "@/components/notes/smooth-scroll";
 import { cn } from "@/components/cn";
 
 /** One page as the editor holds it. `id` doubles as the React key. */
@@ -163,10 +166,12 @@ export function PageEditor({
       {/* The body takes the whole card; folded pages keep just their header. */}
       <div className={cn("min-w-0 p-2 md:p-3", collapsed && "hidden")}>
         <p className="sr-only">Page content</p>
-        <RichTextEditor
-          value={page.content}
-          onChange={(content) => onChange({ ...page, content })}
-        />
+        <LazyBody content={page.content}>
+          <RichTextEditor
+            value={page.content}
+            onChange={(content) => onChange({ ...page, content })}
+          />
+        </LazyBody>
         {contentErrors?.length ? (
           <p role="alert" className="mt-1.5 text-xs text-danger">
             {contentErrors[0]}
@@ -174,6 +179,61 @@ export function PageEditor({
         ) : null}
       </div>
     </Reorder.Item>
+  );
+}
+
+/**
+ * Mounts a page's editor only once it comes near the screen, then keeps it.
+ *
+ * Every page used to mount its own TipTap editor up front — fine for a short
+ * note, but an imported notebook has 200+ pages and scrolling the edit page
+ * stuttered under that many live editors. A folded page (display: none) never
+ * intersects, so it never mounts. Saving doesn't need the editor: the page's
+ * content lives in form state, not inside the editor.
+ */
+function LazyBody({ content, children }: { content: unknown; children: React.ReactNode }) {
+  const host = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  const reserve = useMemo(
+    () =>
+      typeof content === "object" && content !== null
+        ? // toolbar + editor padding, around the estimated body
+          Math.max(260, estimateDocHeight(content as JSONContent) + 110)
+        : 260,
+    [content],
+  );
+
+  useEffect(() => {
+    const el = host.current;
+    if (near || !el) return;
+    // Editors a smooth jump flies past stay as placeholders (see smooth-scroll.ts);
+    // the ones near where it lands mount when it announces the landing.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting) && !isJumping()) setNear(true);
+      },
+      { rootMargin: "800px 0px" },
+    );
+    observer.observe(el);
+    const onJumpEnd = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.height && rect.bottom > -800 && rect.top < window.innerHeight + 800) setNear(true);
+    };
+    window.addEventListener(NOTE_SCROLL_END, onJumpEnd);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener(NOTE_SCROLL_END, onJumpEnd);
+    };
+  }, [near]);
+
+  return (
+    <div ref={host} className="min-w-0">
+      {near ? (
+        children
+      ) : (
+        <div aria-hidden="true" className="rounded-[14px] border border-border bg-surface" style={{ minHeight: reserve }} />
+      )}
+    </div>
   );
 }
 

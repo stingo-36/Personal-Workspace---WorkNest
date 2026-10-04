@@ -1,6 +1,6 @@
 "use client";
 
-import { Reorder } from "framer-motion";
+import { Reorder, useReducedMotion } from "framer-motion";
 import { Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import {
@@ -8,6 +8,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -17,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { EMPTY_NOTE_DOC } from "@/components/notes/editor-extensions";
 import { NoteIconPicker } from "@/components/notes/NoteIconPicker";
 import type { PageDraft } from "@/components/notes/PageEditor";
+import { smoothScrollTo } from "@/components/notes/smooth-scroll";
 import {
   SectionEditor,
   type SectionDraft,
@@ -168,9 +170,18 @@ export function NoteForm({
   const updateSection = (id: string, next: SectionDraft) =>
     setSections((rows) => rows.map((row) => (row.id === id ? next : row)));
 
-  /** Scroll a section/page into view once React has rendered it. */
+  const reduceMotion = useReducedMotion() ?? false;
+  /** The sticky save bar — a revealed section/page lands just below it. */
+  const barRef = useRef<HTMLDivElement>(null);
+
+  /** Scroll a section/page into view once React has rendered (and unfolded) it. */
   const reveal = (elementId: string) =>
-    window.setTimeout(() => document.getElementById(elementId)?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    window.setTimeout(() => {
+      const target = document.getElementById(elementId);
+      if (!target) return;
+      const offset = (barRef.current?.getBoundingClientRect().bottom ?? 0) + 12;
+      smoothScrollTo(target, { offset, reduceMotion });
+    }, 80);
 
   const addSection = () => {
     const section: SectionDraft = {
@@ -265,7 +276,7 @@ export function NoteForm({
         <input type="hidden" name="id" value={defaults.id} />
       ) : null}
 
-      <div className="sticky -top-6 z-30 -mx-5 -mt-6 mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border bg-bg/95 px-5 pb-3 pt-6 backdrop-blur-[12px] md:mb-6 md:pb-3.5 md:-top-8 md:-mx-8 md:-mt-8 md:px-8 md:pt-8">
+      <div ref={barRef} className="sticky -top-6 z-30 -mx-5 -mt-6 mb-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border bg-bg/95 px-5 pb-3 pt-6 backdrop-blur-[12px] md:mb-6 md:pb-3.5 md:-top-8 md:-mx-8 md:-mt-8 md:px-8 md:pt-8">
         <div className="min-w-0 flex-1">
           {/* The page title above already says "Edit note" — the bar names the note. */}
           <p className="truncate text-md font-semibold tracking-[-0.03em] text-text">
@@ -439,9 +450,11 @@ export function NoteForm({
  */
 function NoteOutline({ sections, collapsed, onJump }: { sections: SectionDraft[]; collapsed: string[]; onJump: (sectionId: string, pageId?: string) => void }) {
   return (
-    <aside aria-label="At a glance" className="wl-card hidden border-border-strong p-4 lg:sticky lg:top-44 lg:block">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-text-subtle">At a glance</p>
-      <ol className="flex flex-col gap-3">
+    // Capped to the viewport and scrolled on its own: a long notebook's outline
+    // is taller than the screen, and a sticky box can't be scrolled past.
+    <aside aria-label="At a glance" className="wl-card hidden border-border-strong lg:sticky lg:top-44 lg:flex lg:max-h-[calc(100dvh-12rem)] lg:flex-col">
+      <p className="px-4 pt-4 pb-3 text-xs font-semibold uppercase tracking-[0.1em] text-text-subtle">At a glance</p>
+      <ol className="wl-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
         {sections.map((section, index) => (
           <li key={section.id}>
             <button

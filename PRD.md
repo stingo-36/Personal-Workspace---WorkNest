@@ -4,7 +4,7 @@
 > changes scope, or is retired, update the matching section here (see
 > `AGENTS.md → Keeping the docs current`).
 >
-> Last synced with the codebase: **2026-10-03**
+> Last synced with the codebase: **2026-10-04**
 
 ---
 
@@ -211,7 +211,14 @@ Title / Content) with the list on the right. Each tab has a search box:
   sit in the sticky bar** (lg+). Below lg the note header (with the actions) sits at the
   top and a ☰ button in the bar opens the same contents list. The current page is
   measured from scroll position each frame; clicking a topic smooth-scrolls to land
-  under the bar (re-aimed if pages above finish loading).
+  under the bar — the scroll follows the heading frame by frame and pages it flies
+  past wait to load until it lands, so there is no snap at the end (2026-10-04).
+  Level-2 headings inside a page show as tinted bands, so each block of a topic
+  (e.g. Definition, Example) is easy to spot.
+- **Editing a note:** the *At a glance* outline beside the editor is capped to the
+  screen and scrolls on its own; clicking a section/page there smooth-scrolls to it.
+  A page's editor mounts only when it comes near the screen (long notebooks stay
+  smooth to scroll).
 
 ### 5.5 Resources
 

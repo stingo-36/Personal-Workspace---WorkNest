@@ -3,11 +3,12 @@
 import { useReducedMotion } from "framer-motion";
 import { ChevronRight, List, Pencil, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 
 import { deleteNote, toggleNoteFavorite } from "@/actions/notes";
 import { cn } from "@/components/cn";
 import { NoteViewer } from "@/components/notes/NoteViewer";
+import { isJumping, NOTE_SCROLL_END, smoothScrollTo } from "@/components/notes/smooth-scroll";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 export type ReaderPage = { id: string; title: string; content: unknown };
@@ -66,6 +67,9 @@ export function NoteReader({
     let frame = 0;
     const measure = () => {
       frame = 0;
+      // Mid-jump the heading you clicked is already marked; re-rendering the
+      // whole reader for every heading it flies past is what made jumps stutter.
+      if (isJumping()) return;
       let current = ids[0];
       for (const id of ids) {
         const el = document.getElementById(id);
@@ -81,9 +85,11 @@ export function NoteReader({
     measure();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
+    window.addEventListener(NOTE_SCROLL_END, onScroll);
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      window.removeEventListener(NOTE_SCROLL_END, onScroll);
       cancelAnimationFrame(frame);
     };
   }, [sections]);
@@ -110,9 +116,9 @@ export function NoteReader({
   }, [activeId, reduceMotion]);
 
   /*
-    Smooth jump to a heading. Pages above the target may still be mounting
-    (lazy editors), which moves the target while we travel, so re-aim once
-    the smooth scroll has settled.
+    Smooth jump to a heading. Pages on the way may still be mounting (lazy
+    editors) and move the target while we travel; smoothScrollTo follows it
+    frame by frame instead of re-aiming with a snap at the end.
   */
   const jumpTo = useCallback(
     (event: MouseEvent<HTMLAnchorElement>, id: string) => {
@@ -121,12 +127,7 @@ export function NoteReader({
       event.preventDefault();
       setContentsOpen(false);
       setActiveId(id);
-      const aim = (behavior: ScrollBehavior) =>
-        window.scrollTo({ top: window.scrollY + target.getBoundingClientRect().top - LANDING_OFFSET, behavior });
-      aim(reduceMotion ? "auto" : "smooth");
-      window.setTimeout(() => {
-        if (Math.abs(target.getBoundingClientRect().top - LANDING_OFFSET) > 4) aim("auto");
-      }, reduceMotion ? 50 : 650);
+      smoothScrollTo(target, { offset: LANDING_OFFSET, reduceMotion: Boolean(reduceMotion) });
       window.history.replaceState(null, "", `#${id}`);
     },
     [reduceMotion],
@@ -195,7 +196,58 @@ export function NoteReader({
     </nav>
   );
 
-  let pageNumber = 0;
+
+  /*
+    The reading column, memoised: the active heading changes on every scroll
+    step, and re-rendering 200+ pages (and their editors) for that was the
+    main cost of scrolling a long note.
+  */
+  const pages = useMemo(() => {
+    let pageNumber = 0;
+    return (
+      <div className="max-w-[52rem]">
+        {sections.map((section, sectionIndex) => (
+          <section key={section.id} aria-labelledby={`${sectionAnchor(section.id)}-title`}>
+            {/* Section opener */}
+            <header id={sectionAnchor(section.id)} className="pt-10 pb-2 md:pt-14">
+              <p className="text-2xs font-bold tracking-[0.08em] text-accent-text uppercase">
+                Section {sectionIndex + 1} of {sections.length} · {plural(section.pages.length, "page")}
+              </p>
+              <h2 id={`${sectionAnchor(section.id)}-title`} className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-balance text-text md:text-4xl">
+                {section.title}
+              </h2>
+              {sectionIndex === 0 && note.description ? (
+                <p className="mt-3 hidden max-w-[65ch] text-base text-pretty text-text-muted lg:block">{note.description}</p>
+              ) : null}
+            </header>
+
+            {section.pages.length === 0 ? (
+              <p className="border-b border-border py-8 text-sm text-text-muted">No pages in this section.</p>
+            ) : (
+              section.pages.map((page, index) => {
+                // Only what is plausibly on screen at load mounts its editor eagerly.
+                const eager = pageNumber++ < 2;
+                return (
+                  <article key={page.id} id={pageAnchor(page.id)} aria-labelledby={`${pageAnchor(page.id)}-title`} className="border-b border-border py-8 md:py-12">
+                    <h3 id={`${pageAnchor(page.id)}-title`} className="mb-5 flex items-baseline gap-3 text-2xl font-semibold tracking-[-0.02em] text-balance text-text md:text-3xl">
+                      <span aria-hidden="true" className="shrink-0 font-medium text-text-subtle tabular-nums">
+                        {sectionIndex + 1}.{index + 1}
+                      </span>
+                      <span className="min-w-0">{page.title}</span>
+                    </h3>
+                    <NoteViewer content={page.content} priority={eager} />
+                  </article>
+                );
+              })
+            )}
+          </section>
+        ))}
+        <p className="py-10 text-center text-base text-text-muted">
+          End of <span className="font-semibold text-text">{note.title}</span> · Updated {note.updatedLabel}
+        </p>
+      </div>
+    );
+  }, [sections, note.description, note.title, note.updatedLabel]);
 
   return (
     <div style={{ "--note": accent } as CSSProperties} className="grid min-w-0 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] xl:gap-14">
@@ -280,47 +332,7 @@ export function NoteReader({
             This note has no sections yet. <Link href={`/notes/${note.id}/edit`} className="font-semibold text-accent-text hover:underline">Add one</Link>
           </p>
         ) : (
-          <div className="max-w-[52rem]">
-            {sections.map((section, sectionIndex) => (
-              <section key={section.id} aria-labelledby={`${sectionAnchor(section.id)}-title`}>
-                {/* Section opener */}
-                <header id={sectionAnchor(section.id)} className="pt-10 pb-2 md:pt-14">
-                  <p className="text-2xs font-bold tracking-[0.08em] text-accent-text uppercase">
-                    Section {sectionIndex + 1} of {sections.length} · {plural(section.pages.length, "page")}
-                  </p>
-                  <h2 id={`${sectionAnchor(section.id)}-title`} className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-balance text-text md:text-4xl">
-                    {section.title}
-                  </h2>
-                  {sectionIndex === 0 && note.description ? (
-                    <p className="mt-3 hidden max-w-[65ch] text-base text-pretty text-text-muted lg:block">{note.description}</p>
-                  ) : null}
-                </header>
-
-                {section.pages.length === 0 ? (
-                  <p className="border-b border-border py-8 text-sm text-text-muted">No pages in this section.</p>
-                ) : (
-                  section.pages.map((page, index) => {
-                    // Only what is plausibly on screen at load mounts its editor eagerly.
-                    const eager = pageNumber++ < 2;
-                    return (
-                      <article key={page.id} id={pageAnchor(page.id)} aria-labelledby={`${pageAnchor(page.id)}-title`} className="border-b border-border py-8 md:py-12">
-                        <h3 id={`${pageAnchor(page.id)}-title`} className="mb-5 flex items-baseline gap-3 text-2xl font-semibold tracking-[-0.02em] text-balance text-text md:text-3xl">
-                          <span aria-hidden="true" className="shrink-0 font-medium text-text-subtle tabular-nums">
-                            {sectionIndex + 1}.{index + 1}
-                          </span>
-                          <span className="min-w-0">{page.title}</span>
-                        </h3>
-                        <NoteViewer content={page.content} priority={eager} />
-                      </article>
-                    );
-                  })
-                )}
-              </section>
-            ))}
-            <p className="py-10 text-center text-base text-text-muted">
-              End of <span className="font-semibold text-text">{note.title}</span> · Updated {note.updatedLabel}
-            </p>
-          </div>
+          pages
         )}
       </div>
     </div>
