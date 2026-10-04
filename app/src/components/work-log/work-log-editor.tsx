@@ -164,7 +164,7 @@ export function WorkLogEditor({ workLog, relative, adjacent, ticketsEnabled, day
   return (
     <SaveStatusProvider>
       <div className="work-logs-page work-log-edit-page flex min-w-0 flex-col gap-5">
-        <Link href="/work-logs" className="inline-flex w-fit items-center gap-1 text-sm font-semibold text-accent-text hover:underline">
+        <Link href="/work-logs" className="tap-area inline-flex w-fit items-center gap-1 text-sm font-semibold text-accent-text hover:underline">
           <ChevronLeft className="size-4" aria-hidden="true" />All work logs
         </Link>
 

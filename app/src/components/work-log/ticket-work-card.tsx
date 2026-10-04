@@ -197,7 +197,7 @@ export function TicketWorkCard({
             setOpen((value) => !value);
           }}
           className={cn(
-            "inline-flex cursor-pointer items-center gap-1.5 rounded-sm text-sm font-semibold",
+            "tap-area inline-flex cursor-pointer items-center gap-1.5 rounded-sm text-sm font-semibold",
             "text-accent-text transition-colors duration-150 ease-standard hover:text-primary",
           )}
         >

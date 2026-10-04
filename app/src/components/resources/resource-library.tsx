@@ -473,9 +473,9 @@ function ResourceCard({ resource, onEdit }: { resource: ResourceItem; onEdit: ()
           ) : null}
         </div>
         <span className="-mr-1.5 -mt-1 flex shrink-0 items-center">
-          <FavoriteButton resource={resource} className={cn("size-7", !resource.favorite && "md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100")} />
-          <EditButton resource={resource} onClick={onEdit} className="size-7 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100" />
-          <DeleteButton resource={resource} onClick={remove} pending={pending} className="size-7 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100" />
+          <FavoriteButton resource={resource} className={cn("size-9 md:size-7", !resource.favorite && "md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100")} />
+          <EditButton resource={resource} onClick={onEdit} className="size-9 md:size-7 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100" />
+          <DeleteButton resource={resource} onClick={remove} pending={pending} className="size-9 md:size-7 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100" />
         </span>
       </div>
       {resource.description ? <p className="line-clamp-2 text-sm leading-relaxed whitespace-pre-line text-text-muted">{resource.description}</p> : null}
@@ -501,9 +501,9 @@ function CodeLine({ resource, onEdit }: { resource: ResourceItem; onEdit: () => 
         <h3 className="truncate text-sm font-semibold text-text">{resource.title}</h3>
         {resource.description ? <p className="hidden truncate text-sm text-text-muted md:block">— {resource.description}</p> : null}
         <span className="ml-auto flex items-center">
-          <FavoriteButton resource={resource} className="size-7" />
-          <EditButton resource={resource} onClick={onEdit} className="size-7" />
-          <DeleteButton resource={resource} onClick={remove} pending={pending} className="size-7" />
+          <FavoriteButton resource={resource} className="size-9 md:size-7" />
+          <EditButton resource={resource} onClick={onEdit} className="size-9 md:size-7" />
+          <DeleteButton resource={resource} onClick={remove} pending={pending} className="size-9 md:size-7" />
         </span>
       </div>
       <div className="flex min-w-0 items-start gap-2 rounded-lg border border-[color-mix(in_srgb,var(--type)_40%,var(--c-surface))] bg-[color-mix(in_srgb,var(--type)_6%,var(--c-surface))] py-2 pl-3 pr-2">

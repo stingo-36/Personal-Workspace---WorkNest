@@ -355,7 +355,7 @@ function StatusLine({ entries, today, onGo }: { entries: TrackerEntry[]; today: 
           <button
             type="button"
             onClick={() => onGo(part.view)}
-            className={cn("cursor-pointer rounded font-semibold underline-offset-4 hover:underline", part.danger ? "text-danger" : "text-text")}
+            className={cn("tap-area cursor-pointer rounded font-semibold underline-offset-4 hover:underline", part.danger ? "text-danger" : "text-text")}
           >
             {part.text}
           </button>

@@ -68,7 +68,7 @@ export function AppNav({
   );
 
   return (
-    <header className="app-header sticky top-0 z-40 border-b border-border bg-bg px-3 md:px-5 lg:px-8">
+    <header className="app-header sticky top-0 z-40 border-b border-border bg-bg px-4 md:px-5 lg:px-8">
       <div className="mx-auto w-full max-w-[85rem]">
         <div
           id="app-nav"

@@ -272,7 +272,7 @@ export function NoteReader({
 
       <div className="min-w-0">
         {/* Where am I + actions — solid, so headings never show through as they pass under it. */}
-        <div className="sticky top-[calc(4rem+1px)] z-20 -mx-3 border-b border-border bg-bg px-3 md:-mx-5 md:px-5 lg:mx-0 lg:px-0">
+        <div className="sticky top-[calc(4rem+1px)] z-20 -mx-4 border-b border-border bg-bg px-4 md:-mx-5 md:px-5 lg:mx-0 lg:px-0">
           <div className="flex h-14 items-center gap-3">
             <button
               type="button"

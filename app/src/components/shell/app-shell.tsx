@@ -38,7 +38,7 @@ export function AppShell({
 
         <main
           id="main"
-          className="min-w-0 flex-1 overflow-x-clip px-3 py-6 md:px-5 lg:px-8"
+          className="min-w-0 flex-1 overflow-x-clip px-4 py-6 md:px-5 lg:px-8"
         >
           <div className="mx-auto w-full max-w-[85rem]">{children}</div>
         </main>
