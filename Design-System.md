@@ -200,8 +200,8 @@ own headings always sit below the reader's titles. Weight 600 throughout.
 | Section title (reader h2) | 24 → 30 (`text-3xl md:text-4xl`) | `NoteReader` |
 | Topic / page title (reader h3, number inline) | 20 → 24 (`text-2xl md:text-3xl`) | `NoteReader` |
 | In-page h1 | 18 (`--text-xl`) | `.note-prose` |
-| In-page h2 | 16 (`--text-lg`), 700, `--c-accent-text` on a `--c-card-navy` band with a 3px accent left rule — marks where a block of the page starts (2026-10-04). Standard topic blocks get their own hue from the ticket tint pairs (`data-tone`, set from the heading text in `editor-extensions.ts`): Definition blue (progress), Simple words green (completed), Example orange (testing), Exam keywords pink (waiting), More from your notes / Key points grey (closed), Remember it red (blocked) | `.note-prose [data-level="2"]` |
-| In-page h3 / h4 | 15 (`--text-md`), bold; level 3 is 700 with a hairline underneath (sub-topic inside a block) | `.note-prose` |
+| In-page h2 | 16 (`--text-lg`), 700, on a tinted band with a 3px left rule — one colour for every block: `--c-status-progress-fg` text, `-bg` band, `--c-status-progress` rule (per-block colours dropped 2026-10-04) | `.note-prose [data-level="2"]` |
+| In-page h3 / h4 | 15 (`--text-md`), bold; level 3 is 700 with a `--c-border-strong` line underneath (sub-topic inside a block). Topics in the reader are separated by a 2px `--c-border-strong` rule; `.note-prose hr` matches | `.note-prose` |
 | Body | 15 (`--text-md`), line-height 1.75 | `.note-prose` |
 | Tables | 14 (`--text-base`) | `.note-prose` |
 | Code block | 13 (`--text-sm`), `--font-mono`, line-height 1.7 | `.note-prose pre` |
