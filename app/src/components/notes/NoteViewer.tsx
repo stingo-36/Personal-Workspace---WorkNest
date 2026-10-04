@@ -7,6 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/components/cn";
 
 import { CodeBlock } from "./CodeBlock";
+import { estimateDocHeight } from "./doc-height";
+import { isJumping, NOTE_SCROLL_END } from "./smooth-scroll";
 import { buildNoteExtensions, EMPTY_NOTE_DOC } from "./editor-extensions";
 
 /**
@@ -40,6 +42,9 @@ function isBlank(doc: JSONContent): boolean {
  */
 type MountJob = () => void;
 
+/** How close (px) a page must be to the screen before its editor mounts. */
+const NEAR = 1000;
+
 const queue: MountJob[] = [];
 let draining = false;
 
@@ -72,6 +77,11 @@ function drain() {
   if (draining) return;
   draining = true;
   const step = () => {
+    // a page mounting mid-jump moves the jump's target; wait for it to land
+    if (isJumping()) {
+      whenIdle(step);
+      return;
+    }
     const job = queue.shift();
     if (!job) {
       draining = false;
@@ -157,6 +167,7 @@ export type NoteViewerProps = {
 export function NoteViewer({ content, priority, className }: NoteViewerProps) {
   const doc = useMemo(() => asDoc(content), [content]);
   const blank = useMemo(() => isBlank(doc), [doc]);
+  const estimatedHeight = useMemo(() => estimateDocHeight(doc), [doc]);
 
   const [mounted, setMounted] = useState(priority ?? false);
   const host = useRef<HTMLDivElement>(null);
@@ -179,20 +190,32 @@ export function NoteViewer({ content, priority, className }: NoteViewerProps) {
     // scrolling never waits on idle time. The margin is deliberately generous:
     // the editor should be ready before you reach the page, not as you land on
     // it.
+    const mountNow = () => {
+      dequeue(show);
+      show();
+    };
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          dequeue(show);
-          show();
-        }
+        // Pages a smooth jump flies past stay as placeholders — mounting them
+        // all would stall the jump. The ones near where it lands mount below.
+        if (entries.some((entry) => entry.isIntersecting) && !isJumping()) mountNow();
       },
-      { rootMargin: "1000px 0px" },
+      { rootMargin: `${NEAR}px 0px` },
     );
     observer.observe(el);
+
+    // A jump has landed: the observer won't fire again for a page it already
+    // saw intersecting, so check by hand whether this one is near the screen.
+    const onJumpEnd = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom > -NEAR && rect.top < window.innerHeight + NEAR) mountNow();
+    };
+    window.addEventListener(NOTE_SCROLL_END, onJumpEnd);
 
     return () => {
       dequeue(show);
       observer.disconnect();
+      window.removeEventListener(NOTE_SCROLL_END, onJumpEnd);
     };
   }, [mounted, show]);
 
@@ -211,9 +234,9 @@ export function NoteViewer({ content, priority, className }: NoteViewerProps) {
       {mounted ? (
         <NoteDocument doc={doc} />
       ) : (
-        // holds roughly a screen of space so the scrollbar does not lurch as
-        // pages further down swap their skeleton for real content
-        <div aria-hidden="true" className="space-y-3 py-1">
+        // holds about the page's real height so nothing below lurches when the
+        // skeleton is swapped for the content (see estimateDocHeight)
+        <div aria-hidden="true" className="space-y-3 py-1" style={{ minHeight: estimatedHeight }}>
           <div className="h-3.5 w-[92%] animate-pulse rounded bg-surface-3/70" />
           <div className="h-3.5 w-[78%] animate-pulse rounded bg-surface-3/70" />
           <div className="h-3.5 w-[85%] animate-pulse rounded bg-surface-3/70" />

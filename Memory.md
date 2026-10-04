@@ -4,7 +4,7 @@
 > (with the *why*), gotchas that cost time before, and a changelog. Newest first in
 > every section. Update rules are in `AGENTS.md` §2.
 >
-> Last synced with the codebase: **2026-10-03**
+> Last synced with the codebase: **2026-10-04**
 
 ---
 
@@ -26,6 +26,17 @@
 ## Decisions
 
 Format: **date — decision.** Why. *Rejected:* alternatives.
+
+**2026-10-04 — Note jumps use our own frame-by-frame scroll, and lazy pages wait for it to land.**
+A 228-page imported notebook made topic jumps stutter (~10fps: every page flown past mounted a
+TipTap editor, and the whole reader re-rendered for each heading crossed) and land off target
+(pages mounting after a native smooth scroll moved the heading; the old fix re-aimed with a
+visible snap). `smooth-scroll.ts` re-reads the target each frame, sets `isJumping()` so
+NoteViewer/PageEditor skip mounting mid-flight (they mount on `NOTE_SCROLL_END`), and holds the
+target until it stops moving. The reader's page column is memoised and its active-heading
+tracking pauses mid-jump. The editor now lazy-mounts each page's editor near the viewport.
+*Rejected:* native `scrollTo({behavior:"smooth"})` + re-aim (snaps); mounting everything up front
+(edit page unusable at 200+ pages).
 
 **2026-10-03 — Homepage: one section per scroll via native CSS snapping (final, after three tries).**
 User wants each scroll to move exactly one section, without waiting. Tried in order: CSS
@@ -512,6 +523,8 @@ is done on the real rendered app.
 ## Changelog
 
 `YYYY-MM-DD — what changed — key files`
+
+- 2026-10-04 — Notes: level-2 page headings shown as tinted accent bands (sections of a topic easy to spot); edit page *At a glance* scrolls on its own; smooth, snap-free topic jumps in reader and editor (frame-by-frame chase, lazy mounts paused mid-jump, height estimates for unmounted pages, memoised reader column, lazy page editors); standard topic block headings (Definition, Simple words, Example, Exam keywords, More/Key points, Remember it) each get their own colour via `data-tone` — `globals.css`, `components/notes/editor-extensions.ts`, `components/notes/{smooth-scroll,doc-height}.ts`, `NoteReader.tsx`, `NoteViewer.tsx`, `NoteForm.tsx`, `PageEditor.tsx`
 
 - 2026-10-03 — Homepage nav/footer links renamed to Workspace · AI summaries · Get started with matching anchors (`#workspace`, `#ai-summaries`, `#get-started`; verified each lands on its screen); docs audit: Memory snapshot rewritten, stale gotcha removed, Architecture layout fixed (23 migrations); removed dead `app/scripts/generate-banner-scene.py` and unused `images.qualities` in `next.config.ts` — `components/home/home-page.tsx`, `next.config.ts`, docs
 - 2026-10-03 — Homepage one-section-per-scroll restored with native snapping (`snap-stop: always`), now without the animation load that made it jerky — `(marketing)/home.css`

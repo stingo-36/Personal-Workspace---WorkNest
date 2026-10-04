@@ -4,7 +4,7 @@
 > delete a module, route, model or script, update the relevant section in the same
 > change.
 >
-> Last synced with the codebase: **2026-10-03**
+> Last synced with the codebase: **2026-10-04**
 
 ---
 
@@ -133,6 +133,7 @@ browser ──► proxy.ts ──► (app)/layout.tsx ──► page.tsx (Server
 | `lib/workflow-status.ts` | 5-stage workflow + legacy status normalisation |
 | `lib/follow-ups.ts` | Tracker entries + append-only updates, pin, status, reschedule, tags, `listTodosAroundDay` (work-log to-dos card) |
 | `lib/note-store.ts`, `lib/notes.ts`, `lib/note-icons.ts`, `lib/note-colors.ts` | notebooks, trash/restore, icon search, accent colours |
+| `components/notes/smooth-scroll.ts`, `components/notes/doc-height.ts` | client: frame-by-frame smooth jump that follows a moving target and pauses lazy page mounting while in flight (`isJumping`, `NOTE_SCROLL_END`); estimated height for an unmounted page body. Used by the reader and the editor |
 | `lib/content.ts` | tasks, links, resources (+ favourite) |
 | `lib/sprint.ts` | **the only** sprint arithmetic (`getSprint`) — local calendar days |
 | `lib/user-lists.ts` | Profile-editable lists: `DEFAULT_LISTS`, ordered lists, project options/suggestions, tag usage + rename/delete (raw SQL, user-scoped) |

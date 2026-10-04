@@ -48,6 +48,21 @@ export const CODE_LANGUAGES: ReadonlyArray<{ value: string; label: string }> = [
   { value: "plaintext", label: "Plain text" },
 ];
 
+/**
+ * Level-2 headings that open a standard topic block, mapped to a colour tone.
+ * Matched on the heading's text; any other heading keeps the default style.
+ */
+const HEADING_TONES: Record<string, string> = {
+  definition: "definition",
+  "simple words": "simple",
+  example: "example",
+  examples: "example",
+  "exam keywords": "keywords",
+  "more from your notes": "more",
+  "key points": "more",
+  "remember it": "remember",
+};
+
 /** An empty but schema-valid document, for new notes. */
 export const EMPTY_NOTE_DOC: JSONContent = {
   type: "doc",
@@ -97,7 +112,10 @@ export function buildNoteExtensions({
     renderHTML({ node, HTMLAttributes }) {
       const level = node.attrs.level as number;
       const tag = `h${Math.min(level + headingOffset, 6)}`;
-      return [tag, mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { "data-level": level }), 0];
+      // Topic blocks get their own colour (see `.note-prose [data-tone]`), so
+      // "Example" or "Exam keywords" is recognisable at a glance on any page.
+      const tone = level === 2 ? HEADING_TONES[node.textContent.trim().toLowerCase()] : undefined;
+      return [tag, mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { "data-level": level, "data-tone": tone }), 0];
     },
   }).configure({ levels: [1, 2, 3] });
 
