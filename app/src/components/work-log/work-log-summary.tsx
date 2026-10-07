@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 
 import { generateWorkLogSummary } from "@/actions/worklog";
 import { toast } from "@/components/ui/toast";
+import type { DayTodo } from "@/components/work-log/day-todos";
 import { MarkdownContent } from "@/components/work-log/markdown-editor";
 
 /**
@@ -23,6 +24,8 @@ export function WorkLogSummary({
   generatedAt,
   updatedAt,
   hasContent,
+  todoDate,
+  todos,
   aiOn,
 }: {
   workLogId: string;
@@ -31,6 +34,9 @@ export function WorkLogSummary({
   generatedAt: string | null;
   updatedAt: string;
   hasContent: boolean;
+  /** Candidate Tracker to-dos; narrowed to the browser's local day below. */
+  todoDate: string;
+  todos: DayTodo[];
   /** An OpenRouter key is available (Profile or server). */
   aiOn: boolean;
 }) {
@@ -41,6 +47,11 @@ export function WorkLogSummary({
   const autoStarted = useRef(false);
   // Generating writes updatedAt back unchanged, so any later edit makes this true.
   const stale = Boolean(summary && generatedAt && new Date(updatedAt) > new Date(generatedAt));
+  const hasTodoContent = todos.some((todo) => {
+    const completedDay = todo.completedAt ? format(new Date(todo.completedAt), "yyyy-MM-dd") : null;
+    return completedDay === todoDate || (todo.dueDate !== null && todo.dueDate <= todoDate && !(completedDay && completedDay <= todoDate));
+  });
+  const canSummarise = hasContent || hasTodoContent;
 
   function generate(auto: boolean) {
     setError(undefined);
@@ -56,12 +67,12 @@ export function WorkLogSummary({
   }
 
   useEffect(() => {
-    if (summary || !hasContent || !aiOn || autoStarted.current) return;
+    if (summary || !canSummarise || !aiOn || autoStarted.current) return;
     autoStarted.current = true;
     generate(true);
     // Runs once per mount; `generate` is recreated every render on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summary, hasContent, aiOn]);
+  }, [summary, canSummarise, aiOn]);
 
   return (
     <section aria-labelledby="summary-heading" aria-busy={pending} className="wl-card overflow-hidden">
@@ -73,7 +84,7 @@ export function WorkLogSummary({
           <button
             type="button"
             onClick={() => generate(false)}
-            disabled={pending || !hasContent}
+            disabled={pending || !canSummarise}
             className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border border-border-strong bg-surface px-4 text-sm font-semibold text-text transition-colors duration-150 hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw className={pending ? "size-4 motion-safe:animate-spin" : "size-4"} aria-hidden="true" />
@@ -109,7 +120,7 @@ export function WorkLogSummary({
           </p>
         ) : !error ? (
           <p className="text-sm text-text-muted">
-            {hasContent ? "No summary yet." : "Nothing to summarise yet — add tickets, meeting notes, work done or to-dos first."}
+            {canSummarise ? "No summary yet." : "Nothing to summarise yet — add tickets, meeting notes, work done or to-dos first."}
           </p>
         ) : null}
       </div>

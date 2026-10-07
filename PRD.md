@@ -4,7 +4,7 @@
 > changes scope, or is retired, update the matching section here (see
 > `AGENTS.md → Keeping the docs current`).
 >
-> Last synced with the codebase: **2026-10-04**
+> Last synced with the codebase: **2026-10-07**
 
 ---
 
@@ -104,8 +104,9 @@ update.*
   4. **Attachments** — upload files (≤10 MB each, ≤10 per upload) or add links.
 - **Autosave** is debounced, shows a save-status indicator, never toasts, and never
   creates duplicate rows.
-- **Detail (`/work-logs/[id]`):** read-only view with a side rail (ticket history in
-  its own scroll area), a **Summary** card and **Copy as text** — the whole log as plain text for
+- **Detail (`/work-logs/[id]`):** read-only view with a side rail that starts with
+  that day's **To-dos**, followed by attachments, activity and ticket history (in
+  its own scroll area), plus a **Summary** card and **Copy as text** — the whole log as plain text for
   stand-ups, chat or email.
 - **Summary (detail page):** generated **once automatically** the first time the log
   is viewed with content in it, then only when the user clicks *Regenerate*. **AI
@@ -175,9 +176,10 @@ Title / Content) with the list on the right. Each tab has a search box:
   "<person> replied" + channel) and the timeline.
 - Updates are **append-only** (`note` + channel + `occurredAt`). There is no action to
   edit or delete a single update. A whole entry can be deleted.
-- Under the title a **"Needs you" status line** (overdue to-dos, due today, replies
-  to answer, people to nudge — each a link to its tab; "all caught up" when empty).
-  Overdue, Today and They replied are emphasised lists; the others are quieter.
+- The first section is **Needs you**: concrete overdue/today to-dos and follow-ups
+  with replies to answer or people due for a nudge. Items open directly; each group
+  previews up to four items and links to its full tab, and an "all caught up" state appears when empty. Overdue,
+  Today and They replied are also emphasised in their full lists; the others are quieter.
 - Tab badges count open items; a dot on Follow-ups means someone replied. "Today" is
   the browser's local day. People previously used are suggested.
 

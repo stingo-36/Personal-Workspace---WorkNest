@@ -274,10 +274,12 @@ export function TrackerBoard({
       <PageHeader
         className="mb-0"
         title="Tracker"
-        description={<StatusLine entries={entries} today={today} onGo={choose} />}
+        description="To-dos, follow-ups and notes in one place."
       />
 
       {loadError ? <FormError>{loadError}</FormError> : null}
+
+      <NeedsYou entries={entries} today={today} onGo={choose} onOpen={setOpenId} />
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div role="tablist" aria-label="Tracker lists" onKeyDown={onTabKey} className="flex gap-1 rounded-full border border-border bg-surface-2 p-1">
@@ -326,42 +328,97 @@ export function TrackerBoard({
   );
 }
 
-/**
- * The first thing to read on the page: what needs you right now, each part a
- * link to the tab that holds it. Falls back to a calm "all caught up".
- */
-function StatusLine({ entries, today, onGo }: { entries: TrackerEntry[]; today: string; onGo: (view: TrackerView) => void }) {
+/** The page's first section: the concrete to-dos and follow-ups needing action now. */
+function NeedsYou({ entries, today, onGo, onOpen }: { entries: TrackerEntry[]; today: string; onGo: (view: TrackerView) => void; onOpen: (id: string) => void }) {
   const open = entries.filter((entry) => entry.status !== "Done");
-  const todos = open.filter((entry) => entry.kind === "Task" && entry.dueDate);
-  const overdue = todos.filter((entry) => entry.dueDate! < today).length;
-  const dueToday = todos.filter((entry) => entry.dueDate === today).length;
-  const replied = open.filter((entry) => entry.kind === "FollowUp" && followStateOf(entry) === "replied").length;
-  const nudges = open.filter((entry) => entry.kind === "FollowUp" && followStateOf(entry) === "waiting" && entry.dueDate && entry.dueDate <= today).length;
+  const tasks = open
+    .filter((entry) => entry.kind === "Task" && entry.dueDate && entry.dueDate <= today)
+    .sort(byDue);
+  const followUps = open
+    .filter((entry) => entry.kind === "FollowUp" && (followStateOf(entry) === "replied" || (entry.dueDate && entry.dueDate <= today)))
+    .sort((a, b) => {
+      const stateOrder = Number(followStateOf(b) === "replied") - Number(followStateOf(a) === "replied");
+      return stateOrder || byDue(a, b);
+    });
+  const total = tasks.length + followUps.length;
 
-  const parts = [
-    overdue ? { key: "overdue", text: `${overdue} overdue`, view: "todo" as const, danger: true } : null,
-    dueToday ? { key: "today", text: `${dueToday} due today`, view: "todo" as const, danger: false } : null,
-    replied ? { key: "replied", text: `${replied} ${replied === 1 ? "reply" : "replies"} to answer`, view: "followups" as const, danger: false } : null,
-    nudges ? { key: "nudges", text: `${nudges} ${nudges === 1 ? "person" : "people"} to nudge`, view: "followups" as const, danger: false } : null,
-  ].filter((part) => part !== null);
-
-  if (parts.length === 0) return <p>You&apos;re all caught up — nothing overdue or waiting on you.</p>;
   return (
-    // Spacing, not "·" glyphs, separates the parts — a glyph dangles where the line wraps.
-    <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
-      <span>Needs you:</span>
-      {parts.map((part) => (
-        <span key={part.key}>
-          <button
-            type="button"
-            onClick={() => onGo(part.view)}
-            className={cn("tap-area cursor-pointer rounded font-semibold underline-offset-4 hover:underline", part.danger ? "text-danger" : "text-text")}
-          >
-            {part.text}
-          </button>
+    <section aria-labelledby="needs-you-heading" data-reveal className="wl-card overflow-hidden">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-4 md:px-5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-sidebar text-sidebar-fg" aria-hidden="true">
+          <CircleAlert className="size-4" />
         </span>
-      ))}
-    </p>
+        <div className="min-w-0 flex-1">
+          <h2 id="needs-you-heading" className="flex items-center gap-2 text-lg font-semibold tracking-[-0.015em] text-text">
+            Needs you
+            <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-semibold text-accent-text tabular-nums">{total}</span>
+          </h2>
+          <p className="text-sm text-text-muted">Today&apos;s tasks and follow-ups that need your attention.</p>
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <p className="flex items-center gap-2 px-4 py-5 text-sm text-text-muted md:px-5">
+          <Check className="size-4 text-primary" aria-hidden="true" />
+          You&apos;re all caught up — nothing overdue or waiting on you.
+        </p>
+      ) : (
+        <div className={cn("grid gap-px bg-border", tasks.length && followUps.length && "lg:grid-cols-2")}>
+          {tasks.length ? (
+            <NeedGroup title="To-dos" count={tasks.length} onViewAll={() => onGo("todo")}>
+              {tasks.slice(0, 4).map((entry) => (
+                <NeedRow
+                  key={entry.id}
+                  entry={entry}
+                  label={entry.dueDate! < today ? "Overdue" : "Today"}
+                  danger={entry.dueDate! < today}
+                  onOpen={() => onOpen(entry.id)}
+                />
+              ))}
+            </NeedGroup>
+          ) : null}
+          {followUps.length ? (
+            <NeedGroup title="Follow-ups" count={followUps.length} onViewAll={() => onGo("followups")}>
+              {followUps.slice(0, 4).map((entry) => (
+                <NeedRow
+                  key={entry.id}
+                  entry={entry}
+                  label={followStateOf(entry) === "replied" ? "Reply" : "Nudge"}
+                  onOpen={() => onOpen(entry.id)}
+                />
+              ))}
+            </NeedGroup>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function NeedGroup({ title, count, onViewAll, children }: { title: string; count: number; onViewAll: () => void; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0 bg-surface">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-5">
+        <h3 className="font-semibold text-text">{title}</h3>
+        <span className="text-xs font-semibold text-text-muted tabular-nums">{count}</span>
+        <button type="button" onClick={onViewAll} className="tap-area ml-auto cursor-pointer text-sm font-semibold text-accent-text hover:underline">View all</button>
+      </div>
+      <ul className="divide-y divide-border">{children}</ul>
+    </div>
+  );
+}
+
+function NeedRow({ entry, label, danger = false, onOpen }: { entry: TrackerEntry; label: string; danger?: boolean; onOpen: () => void }) {
+  return (
+    <li className="group relative flex min-w-0 items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface-2 md:px-5">
+      {entry.kind === "Task" ? <DoneToggle entry={entry} /> : <MessageSquareReply className="size-4 shrink-0 text-accent-text" aria-hidden="true" />}
+      <button type="button" onClick={onOpen} title={entry.subject} className="min-w-0 flex-1 cursor-pointer text-left after:absolute after:inset-0">
+        <span className="block truncate text-sm font-semibold text-text">{entry.subject}</span>
+        {entry.kind === "FollowUp" && entry.person ? <span className="block truncate text-xs text-text-muted">{entry.person}</span> : null}
+      </button>
+      {entry.pinned ? <PinnedStar /> : null}
+      <span className={cn("shrink-0 rounded-full px-2 py-1 text-xs font-bold", danger ? "bg-danger text-danger-fg" : "bg-primary-subtle text-accent-text")}>{label}</span>
+    </li>
   );
 }
 

@@ -33,7 +33,7 @@ function subscribeNever() {
  * so the server sends a slightly wider window and the narrowing happens here,
  * after hydration (the server paints a neutral placeholder).
  */
-export function DayTodos({ date, todos }: { date: string; todos: DayTodo[] }) {
+export function DayTodos({ date, todos, compact = false }: { date: string; todos: DayTodo[]; compact?: boolean }) {
   const hydrated = useSyncExternalStore(subscribeNever, () => true, () => false);
 
   const completed = hydrated ? todos.filter((todo) => todo.completedAt && localDay(todo.completedAt) === date) : [];
@@ -64,7 +64,7 @@ export function DayTodos({ date, todos }: { date: string; todos: DayTodo[] }) {
           No to-dos finished or overdue on this day.
         </p>
       ) : (
-        <div className="grid gap-px bg-border md:grid-cols-2">
+        <div className={compact ? "grid gap-px bg-border" : "grid gap-px bg-border md:grid-cols-2"}>
           <TodoGroup title="Completed that day" empty="Nothing ticked off." items={completed} kind="done" date={date} />
           <TodoGroup title="Overdue / not done" empty="Nothing overdue." items={overdue} kind="overdue" date={date} />
         </div>

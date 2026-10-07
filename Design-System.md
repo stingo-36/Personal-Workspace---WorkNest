@@ -5,7 +5,7 @@
 > and `app/src/app/(auth)/auth-motion.css` (login / register). This file explains the system and the rules. If you change a token,
 > update the table here in the same change.
 >
-> Last synced with the codebase: **2026-10-04**
+> Last synced with the codebase: **2026-10-07**
 
 ---
 
@@ -379,10 +379,18 @@ submit button, so form actions still fire), `PageHeader`, `ComingSoonPage`.
 
 ### Feature components
 `work-log/*` (editor, sections, ticket search/card/history, save status, attachments,
-learning, day type/stamp, copy button), `tickets/ticket-board`, `tracker/tracker-board`
+learning, day type/stamp, copy button). On work-log detail, the compact single-column
+To-dos card is the first item in the right rail, immediately before Attachments.
+Other feature components: `tickets/ticket-board`, `tracker/tracker-board`
 (all per-kind wording lives in `KIND_META`), `notes/*` (TipTap editors, icon picker,
 viewer, TOC), `resources/resource-library`, `profile/profile-form`, `auth/*`,
 `home/*` (homepage).
+
+Tracker starts with one `.wl-card` **Needs you** section before its tabs. At `lg` it
+splits actionable To-dos and Follow-ups into two columns; below `lg` they stack. It
+shows actual subjects (not only counts), opens an item directly, and uses the calm
+empty state when nothing needs action. Each group previews at most four rows so the
+full Tracker lists remain reachable without a long attention card pushing them away.
 
 ### CSS recipes in `globals.css`
 `.wl-card` / `.wl-card-head` (work-log card), `.wl-hero` (ink header that re-points

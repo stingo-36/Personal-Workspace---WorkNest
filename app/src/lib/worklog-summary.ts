@@ -32,6 +32,7 @@ export function workLogHasContent(log: SummaryInput): boolean {
     log.learningNotes.trim() ||
       log.meetings.some((meeting) => meeting.notes.trim()) ||
       log.todos?.completed.length ||
+      log.todos?.overdue.length ||
       (log.ticketsEnabled && log.ticketUpdates.length),
   );
 }

@@ -138,6 +138,8 @@ export default async function WorkLogViewPage({ params }: { params: Promise<{ wo
             generatedAt={data.summaryModel && data.summaryGeneratedAt ? new Date(data.summaryGeneratedAt).toISOString() : null}
             updatedAt={updatedAt.toISOString()}
             hasContent={isWork && Boolean(learning || meetingsNoted || (ticketsEnabled && tickets.length))}
+            todoDate={dayIso}
+            todos={dayTodos}
             aiOn={ai.keySource !== null}
           />
 
@@ -203,12 +205,12 @@ export default async function WorkLogViewPage({ params }: { params: Promise<{ wo
               </Card>
             </>
           )}
-
-          {/* From the Tracker: what was ticked off, and what was still overdue, on this day. */}
-          <DayTodos date={dayIso} todos={dayTodos} />
         </div>
 
         <aside aria-label="Log details" className="flex min-w-0 flex-col gap-5">
+          {/* From the Tracker: what was ticked off, and what was still overdue, on this day. */}
+          <DayTodos date={dayIso} todos={dayTodos} compact />
+
           <Card id="attachments-heading" title="Attachments & links" count={attachments.length || undefined}>
             {attachments.length === 0 ? (
               <p className="px-4 py-4 text-sm text-text-muted md:px-5">No files or links.</p>
