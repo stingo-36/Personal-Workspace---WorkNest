@@ -4,7 +4,7 @@
 > delete a module, route, model or script, update the relevant section in the same
 > change.
 >
-> Last synced with the codebase: **2026-10-04**
+> Last synced with the codebase: **2026-10-07**
 
 ---
 
@@ -67,10 +67,10 @@ authenticated shell.
 | `/` | `(marketing)/page.tsx` → `HomePage` (`components/home/*`: `home-page`, `feature-showcase`, `doodles`, `recap-avatar` (user's 3D character cut-out `public/home/recap-avatar.webp`; hidden while missing); `screen-motion` (replays each snapped screen's `[data-anim]` entrance on every arrival, direction-aware); styles `(marketing)/home.css` + `app/brand-art.css`) | public |
 | `/login`, `/register` | `(auth)/*/page.tsx` | public; redirect to `/tracker` if signed in |
 | `/work-logs` | `(app)/work-logs/page.tsx` | sprint-grouped listing |
-| `/work-logs/[workLogId]` | `.../page.tsx` | read-only detail + Copy as text |
+| `/work-logs/[workLogId]` | `.../page.tsx` | read-only detail + Copy as text; side rail begins with that day's Tracker to-dos |
 | `/work-logs/[workLogId]/edit` | `.../edit/page.tsx` | `WorkLogEditor` |
 | `/tickets` | `(app)/tickets/page.tsx` | `TicketBoard`; redirects to `/work-logs` if tickets disabled |
-| `/tracker` | `(app)/tracker/page.tsx` | `TrackerBoard` — default landing after login; `?view=todo\|followups\|notes` picks the tab |
+| `/tracker` | `(app)/tracker/page.tsx` | `TrackerBoard` — cross-list Needs you section first, then To-do / Follow-ups / Notes tabs; default landing after login; `?view=todo\|followups\|notes` picks the tab |
 | `/notes`, `/notes/new`, `/notes/[noteId]`, `/notes/[noteId]/edit` | `(app)/notes/**` | notebooks |
 | `/resources` | `(app)/resources/page.tsx` | `ResourceLibrary` |
 | `/favourites` | `(app)/favourites/page.tsx` | reads Prisma directly |

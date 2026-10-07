@@ -4,7 +4,7 @@
 > (with the *why*), gotchas that cost time before, and a changelog. Newest first in
 > every section. Update rules are in `AGENTS.md` §2.
 >
-> Last synced with the codebase: **2026-10-04**
+> Last synced with the codebase: **2026-10-07**
 
 ---
 
@@ -26,6 +26,17 @@
 ## Decisions
 
 Format: **date — decision.** Why. *Rejected:* alternatives.
+
+**2026-10-07 — Tracker opens with concrete work needing attention, not a count sentence.**
+The owner wanted to see what to do immediately. The first card now combines overdue/today
+to-dos with replies to answer and follow-ups due for a nudge; rows open directly and group
+links lead to the full lists. Each group previews four rows to keep the page balanced.
+Notes remain out because they have no due/action state.
+
+**2026-10-07 — Work-log To-dos lead the detail side rail and both groups count as AI-summary content.**
+The owner wanted the day-specific Tracker context visible before attachments instead of after
+the main timeline. Completed-that-day and overdue/not-done items are both sent to OpenRouter;
+either group can now trigger summary generation even when the log has no other written content.
 
 **2026-10-04 — Phone type scale steps up one notch; 16px phone gutter; 16px form fields.**
 User asked for the whole site to read well on phones. An audit of every page at 360/375px found
@@ -534,6 +545,10 @@ is done on the real rendered app.
 ## Changelog
 
 `YYYY-MM-DD — what changed — key files`
+
+- 2026-10-07 — Replaced Tracker's small Needs you count line with a first-class action section listing overdue/today to-dos, replies to answer and due nudges, with direct item and full-list access — `components/tracker/tracker-board.tsx`, docs
+
+- 2026-10-07 — Moved the work-log detail To-dos card to the top of the right rail before Attachments; ensured completed and overdue/not-done to-dos both make the day eligible for AI summary generation — `work-logs/[workLogId]/page.tsx`, `components/work-log/{day-todos,work-log-summary}.tsx`, `lib/worklog-summary.ts`, docs
 
 - 2026-10-04 — Mobile pass across the site: phone type scale +1 step, 16px fields (no iOS zoom), 16px gutters, larger tap targets (`.tap-area`, resource icon buttons); audited every page at 360/375px — `globals.css`, `shell/app-shell.tsx`, `shell/app-nav.tsx`, `notes/NoteReader.tsx`, `notes/NoteForm.tsx`, `tracker/tracker-board.tsx`, `work-log/*`, `resources/resource-library.tsx`
 
