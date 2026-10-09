@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
 import { generateReport } from "@/actions/reports";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageBand } from "@/components/shell/page-band";
+import { cn } from "@/components/cn";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
 import { toast } from "@/components/ui/toast";
 import { parseReport, reportToHtml, reportToText, type ParsedReport } from "@/components/reports/report-format";
 
@@ -66,30 +66,32 @@ export function ReportView({ sprintKey, sprints, report, stale, aiOn }: { sprint
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
-      <PageHeader title="Reports" description="A 5-15 report for each sprint, built from your work logs. Copy it straight into your doc." className="mb-0" />
+      <PageBand title="Reports" eyebrow="A 5-15 report for each sprint, built from your work logs — copy it straight into your doc" stats={[{ value: sprints.length, label: sprints.length === 1 ? "sprint" : "sprints" }, { value: sprints.filter((entry) => entry.hasReport).length, label: "reports saved" }]} />
 
-      <section aria-label="Choose a sprint" className="wl-card flex flex-col gap-4 p-4 md:flex-row md:items-end md:p-5">
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <span id="report-sprint-label" className="text-sm font-semibold text-text">Sprint</span>
-          <Select
-            id="report-sprint"
-            value={sprintKey}
-            onChange={(event) => router.push(`/reports?sprint=${event.target.value}`)}
-          >
-            {sprints.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label} · {s.logCount} {s.logCount === 1 ? "log" : "logs"}{s.hasReport ? " · report saved" : ""}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Button variant={report ? "secondary" : "primary"} onClick={generate} loading={pending} disabled={!aiOn || !selected?.logCount}>
-            {!pending ? <RefreshCw aria-hidden="true" /> : null}
-            {pending ? "Generating…" : report ? "Regenerate" : "Generate report"}
-          </Button>
-        </div>
-      </section>
+      {/* Sprint rail (2026-10-08): one card per sprint, newest first. */}
+      <nav aria-label="Choose a sprint" className="-mx-1 flex gap-2.5 overflow-x-auto px-1 py-1 [scrollbar-width:none]">
+        {sprints.map((s) => {
+          const on = s.key === sprintKey;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              aria-pressed={on}
+              onClick={() => router.push(`/reports?sprint=${s.key}`)}
+              className={cn(
+                "flex w-52 shrink-0 cursor-pointer flex-col gap-2 rounded-2xl border p-4 text-left transition-colors duration-150",
+                on ? "border-sidebar bg-sidebar text-sidebar-fg" : "border-border bg-surface text-text hover:border-border-strong",
+              )}
+            >
+              <span className="text-sm font-semibold">{s.label}</span>
+              <span className="flex flex-wrap gap-1.5">
+                <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", on ? "bg-sidebar-2 text-sidebar-fg" : "border border-border text-text-muted")}>{s.logCount} {s.logCount === 1 ? "log" : "logs"}</span>
+                {s.hasReport ? <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", on ? "bg-surface text-text" : "bg-primary-subtle text-accent-text")}>Saved</span> : null}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
 
       {!aiOn ? (
         <p role="status" className="wl-card flex items-start gap-2 px-4 py-3 text-sm text-text md:px-5">
@@ -109,33 +111,41 @@ export function ReportView({ sprintKey, sprints, report, stale, aiOn }: { sprint
         </p>
       ) : null}
 
-      <section aria-labelledby="report-heading" aria-busy={pending} className="wl-card overflow-hidden">
+      {/* The desk: a toolbar, then the report as a sheet of paper. */}
+      <section aria-labelledby="report-heading" aria-busy={pending} className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-surface px-3 py-5 md:px-6 md:py-8">
+        <div className="flex w-full max-w-3xl flex-wrap items-center gap-2 rounded-2xl border border-border bg-surface p-2 pl-4">
+          <h2 id="report-heading" className="mr-auto text-sm font-semibold text-text">{selected ? `${selected.label} report` : "Report"}</h2>
+          {report ? (
+            <>
+              <Button size="sm" variant="secondary" onClick={() => void copy("text")} disabled={pending || !parsed}>
+                {copied === "text" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                {copied === "text" ? "Copied" : "Copy as plain text"}
+              </Button>
+              <Button size="sm" onClick={() => void copy("doc")} disabled={pending || !parsed}>
+                {copied === "doc" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                {copied === "doc" ? "Copied" : "Copy for Google Docs"}
+              </Button>
+            </>
+          ) : null}
+          <Button size="sm" variant={report ? "secondary" : "primary"} onClick={generate} loading={pending} disabled={!aiOn || !selected?.logCount}>
+            {!pending ? <RefreshCw aria-hidden="true" /> : null}
+            {pending ? "Generating…" : report ? "Regenerate" : "Generate report"}
+          </Button>
+        </div>
+
         {report ? (
           <>
-            {/* Copy bar: sits on the report so it's the obvious next step after generating. */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-5 py-3 md:px-8">
-              <h2 id="report-heading" className="text-sm font-semibold text-text">Report</h2>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => void copy("text")} disabled={pending || !parsed}>
-                  {copied === "text" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                  {copied === "text" ? "Copied" : "Copy as plain text"}
-                </Button>
-                <Button size="sm" onClick={() => void copy("doc")} disabled={pending || !parsed}>
-                  {copied === "doc" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-                  {copied === "doc" ? "Copied" : "Copy for Google Docs"}
-                </Button>
-              </div>
+            {stale ? <p className="w-full max-w-3xl text-sm font-semibold text-text">Logs in this sprint changed since this was generated — regenerate to include them.</p> : null}
+            <div className="w-full max-w-3xl rounded-md border border-border bg-surface">
+              {parsed ? <ReportDocument report={parsed} /> : null}
             </div>
-            {parsed ? <ReportDocument report={parsed} /> : null}
-            <p className="border-t border-border px-5 py-3 text-xs text-text-muted md:px-8" aria-live="polite">
+            <p className="w-full max-w-3xl text-xs text-text-muted" aria-live="polite">
               AI report · {report.model} · Generated{" "}
               <time dateTime={report.generatedAt}>{format(new Date(report.generatedAt), "d MMM yyyy, h:mm a")}</time>
-              {stale ? <span className="font-semibold text-text"> · Logs in this sprint changed since — regenerate to include them.</span> : null}
             </p>
           </>
         ) : (
-          <div className="flex flex-col items-start gap-2 px-5 py-8 md:px-8">
-            <h2 id="report-heading" className="sr-only">Report</h2>
+          <div className="flex w-full max-w-3xl flex-col items-start gap-2 rounded-md border border-dashed border-border-strong px-6 py-10">
             <FileText className="size-6 text-accent-text" aria-hidden="true" />
             <p className="text-base font-semibold text-text">
               {pending ? "Writing the report…" : selected?.logCount ? "No report for this sprint yet." : "No work logs in this sprint yet."}
@@ -157,7 +167,7 @@ export function ReportView({ sprintKey, sprints, report, stale, aiOn }: { sprint
 /** On-screen preview in the doc's layout: centred title, section bands, bold groups, bullets. */
 function ReportDocument({ report }: { report: ParsedReport }) {
   return (
-    <article className="mx-auto flex max-w-3xl flex-col px-5 py-8 text-text md:px-10 md:py-10">
+    <article className="mx-auto flex max-w-3xl flex-col px-6 py-10 text-text md:px-16 md:py-14">
       <header className="pb-4 text-center">
         <p className="text-2xl font-bold tracking-[-0.01em]">{report.title}</p>
         {report.dates ? <p className="mt-1 text-lg font-bold">{report.dates}</p> : null}

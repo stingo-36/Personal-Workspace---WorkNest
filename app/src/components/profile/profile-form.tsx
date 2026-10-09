@@ -16,9 +16,8 @@ import {
   type ProjectOption,
   type TagUsage,
 } from "@/components/profile/list-editors";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageBand } from "@/components/shell/page-band";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 import { getSprint } from "@/lib/sprint";
@@ -138,134 +137,120 @@ export function ProfileForm({ email, initial, lists, ai, initialSection }: { ema
   }
 
   return (
+    // Redesigned 2026-10-08: identity header, one horizontal tab bar, settings as label/control rows.
     <div className="flex w-full min-w-0 flex-col gap-6">
-      {/* One header: the page title with who you are inline — no second competing card. */}
-      <PageHeader
-        title="Profile"
-        className="mb-0"
-        description={
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span className="inline-flex min-w-0 items-center gap-2">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar text-xs font-bold text-sidebar-fg" aria-hidden="true">{initials || "?"}</span>
-              <span className="font-semibold text-text">{displayName}</span>
-            </span>
-            <span className="inline-flex min-w-0 items-center gap-1.5"><Mail className="size-3.5 shrink-0" aria-hidden="true" /><span className="truncate">{email}</span></span>
-            <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-sm font-semibold text-text">{LENGTHS.find((item) => item.days === initial.sprintLengthDays)?.label ?? `${initial.sprintLengthDays} days`} sprints</span>
-            <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-sm font-semibold text-text">Tickets {initial.ticketsEnabled ? "on" : "off"}</span>
-          </div>
-        }
+      <PageBand
+        title={displayName}
+        eyebrow={<span className="inline-flex items-center gap-1.5"><Mail className="size-3.5 shrink-0" aria-hidden="true" />{email}</span>}
+        stats={[
+          { value: LENGTHS.find((item) => item.days === initial.sprintLengthDays)?.label ?? `${initial.sprintLengthDays} days`, label: "sprints" },
+          { value: initial.ticketsEnabled ? "On" : "Off", label: "ticket tracking" },
+        ]}
+        actions={<span className="grid size-14 place-items-center rounded-2xl bg-sidebar-accent-bg text-lg font-semibold text-sidebar-accent" aria-hidden="true">{initials || "?"}</span>}
       />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8">
-        {/* Section menu: one section open at a time. A rail on desktop, a scrolling chip row on phones. */}
-        <nav aria-label="Profile sections" className="min-w-0 lg:sticky lg:top-20">
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:gap-5 lg:overflow-visible lg:px-0 lg:pb-0">
-            {MENU.map((group) => (
-              <div key={group.label} className="contents lg:flex lg:flex-col lg:gap-1">
-                <p className="hidden px-3 text-2xs font-bold tracking-[0.08em] text-text-muted uppercase lg:block">{group.label}</p>
-                {group.items.map(({ id, label, Icon }) => {
-                  const active = section === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-current={active ? "page" : undefined}
-                      onClick={() => open(id)}
-                      className={cn(
-                        "inline-flex shrink-0 cursor-pointer items-center gap-2.5 rounded-full border px-3.5 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150 lg:rounded-lg lg:border-transparent",
-                        active ? "border-sidebar bg-sidebar text-sidebar-fg shadow-sm" : "border-border bg-surface text-text hover:bg-surface-2 lg:bg-transparent",
-                      )}
-                    >
-                      <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-fg" : "text-accent-text")} aria-hidden="true" />
-                      {label}
-                      {id in dirtyBySection && dirtyBySection[id as SettingsSection] ? <span className="size-2 rounded-full bg-warning" aria-label="unsaved" /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </nav>
+      {/* One tab bar for every section, grouped; scrolls sideways on small screens. */}
+      <nav aria-label="Profile sections" className="mx-auto w-full max-w-5xl min-w-0 overflow-x-auto rounded-2xl border border-border bg-surface p-1.5 [scrollbar-width:none]">
+        <div className="flex w-max items-center gap-1 lg:w-auto lg:flex-wrap">
+          {MENU.map((group, groupIndex) => (
+            <div key={group.label} className="flex items-center gap-1">
+              {groupIndex > 0 ? <span className="mx-1.5 h-6 w-px bg-border" aria-hidden="true" /> : null}
+              {group.items.map(({ id, label, Icon }) => {
+                const active = section === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => open(id)}
+                    className={cn(
+                      "inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-xl px-3.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
+                      active ? "bg-sidebar text-sidebar-fg" : "text-text-muted hover:bg-surface-2 hover:text-text",
+                    )}
+                  >
+                    <Icon className={cn("size-4 shrink-0", active ? "text-sidebar-fg" : "text-accent-text")} aria-hidden="true" />
+                    {label}
+                    {id in dirtyBySection && dirtyBySection[id as SettingsSection] ? <span className="size-2 rounded-full bg-warning" aria-label="unsaved" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </nav>
 
-        <div className="min-w-0">
+      <div className="mx-auto w-full max-w-5xl min-w-0">
           {section === "account" ? (
             <div className="flex flex-col gap-6">
-              <ListCard title="Account" description="Your name as it appears in the app. Email is used to sign in.">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Name" htmlFor="profile-name">
-                    <Input id="profile-name" value={values.name} maxLength={80} onChange={(event) => set("name", event.target.value)} />
-                  </Field>
-                  <Field label="Email" htmlFor="profile-email" hint="Used to sign in — can't be changed here.">
-                    <Input id="profile-email" value={email} readOnly disabled />
-                  </Field>
-                </div>
-              </ListCard>
+              <SettingsRows title="Account">
+                <SettingsRow label="Name" hint="As it appears in the app and on your 5-15 reports." htmlFor="profile-name">
+                  <Input id="profile-name" value={values.name} maxLength={80} onChange={(event) => set("name", event.target.value)} />
+                </SettingsRow>
+                <SettingsRow label="Email" hint="Used to sign in — can't be changed here." htmlFor="profile-email">
+                  <Input id="profile-email" value={email} readOnly disabled />
+                </SettingsRow>
+              </SettingsRows>
               {/* Saves on its own — not part of the save bar below. */}
               <AiSettingsCard initial={ai} />
             </div>
           ) : null}
 
           {section === "sprint" ? (
-            <ListCard title="Sprint calendar" description="Work Logs group your days into sprints counted from this date.">
-              <div className="grid gap-5 md:grid-cols-[14rem_minmax(0,1fr)]">
-                <Field label="A sprint starts on" htmlFor="profile-sprint-start">
-                  <Input id="profile-sprint-start" type="date" value={values.sprintStartDate} onChange={(event) => set("sprintStartDate", event.target.value)} />
-                </Field>
-                <div className="flex flex-col gap-2">
-                  <span id="profile-sprint-length" className="text-sm font-semibold text-text">Sprint length</span>
-                  <div role="radiogroup" aria-labelledby="profile-sprint-length" className="grid grid-cols-4 gap-1 rounded-full border border-border-strong bg-surface-2 p-1">
-                    {LENGTHS.map(({ days, label }) => {
-                      const active = values.sprintLengthDays === days;
-                      return (
-                        <button
-                          key={days}
-                          type="button"
-                          role="radio"
-                          aria-checked={active}
-                          onClick={() => set("sprintLengthDays", days)}
-                          className={cn("h-8 cursor-pointer rounded-full px-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150", active ? "bg-sidebar text-sidebar-fg shadow-sm" : "text-text hover:bg-surface-3")}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
+            <SettingsRows title="Sprint calendar">
+              <SettingsRow label="A sprint starts on" hint="Work Logs group your days into sprints counted from this date." htmlFor="profile-sprint-start">
+                <Input id="profile-sprint-start" type="date" value={values.sprintStartDate} onChange={(event) => set("sprintStartDate", event.target.value)} className="md:max-w-60" />
+              </SettingsRow>
+              <SettingsRow label="Sprint length" labelId="profile-sprint-length">
+                <div role="radiogroup" aria-labelledby="profile-sprint-length" className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {LENGTHS.map(({ days, label }) => {
+                    const active = values.sprintLengthDays === days;
+                    return (
+                      <button
+                        key={days}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => set("sprintLengthDays", days)}
+                        className={cn("h-12 cursor-pointer rounded-xl border-[1.5px] px-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150", active ? "border-primary bg-primary-subtle text-accent-text" : "border-border text-text hover:border-border-strong")}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
+              </SettingsRow>
               {current ? (
-                <dl className="grid gap-3 rounded-xl border border-border-strong bg-surface-2 p-4 md:grid-cols-2">
-                  <div>
-                    <dt className="text-xs font-semibold text-text-muted">Current sprint</dt>
-                    <dd className="mt-0.5 text-base font-semibold text-text">{format(current.start, "EEE d MMM")} – {format(current.end, "EEE d MMM")}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold text-text-muted">Next sprint starts</dt>
-                    <dd className="mt-0.5 text-base font-semibold text-text">{format(addDays(current.end, 1), "EEEE d MMM")}</dd>
-                  </div>
-                </dl>
+                <SettingsRow label="Preview" hint="What these settings mean today.">
+                  <dl className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <dt className="text-xs font-semibold text-text-muted">Current sprint</dt>
+                      <dd className="mt-0.5 text-base font-semibold text-text">{format(current.start, "EEE d MMM")} – {format(current.end, "EEE d MMM")}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold text-text-muted">Next sprint starts</dt>
+                      <dd className="mt-0.5 text-base font-semibold text-text">{format(addDays(current.end, 1), "EEEE d MMM")}</dd>
+                    </div>
+                  </dl>
+                </SettingsRow>
               ) : null}
-            </ListCard>
+            </SettingsRows>
           ) : null}
 
           {section === "work-logs" ? (
-            <ListCard title="Work logs" description="What each work log tracks.">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p id="profile-tickets-label" className="text-sm font-semibold text-text">Track tickets in work logs</p>
-                  <p className="mt-0.5 text-sm text-text-muted">Shows the Tickets page and the ticket sections in each work log. Turning it off hides them — nothing is deleted.</p>
-                </div>
+            <SettingsRows title="Work logs">
+              <SettingsRow label="Track tickets in work logs" labelId="profile-tickets-label" hint="Shows the Tickets page and the ticket sections in each work log. Turning it off hides them — nothing is deleted.">
                 <button
                   type="button"
                   role="switch"
                   aria-checked={values.ticketsEnabled}
                   aria-labelledby="profile-tickets-label"
                   onClick={() => set("ticketsEnabled", !values.ticketsEnabled)}
-                  className={cn("relative mt-0.5 h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors duration-150", values.ticketsEnabled ? "bg-sidebar" : "bg-border-strong")}
+                  className={cn("relative h-8 w-14 shrink-0 cursor-pointer rounded-full transition-colors duration-150", values.ticketsEnabled ? "bg-primary" : "bg-border-strong")}
                 >
-                  <span className={cn("absolute top-1 size-5 rounded-full bg-surface shadow-sm transition-[left] duration-150", values.ticketsEnabled ? "left-6" : "left-1")} aria-hidden="true" />
+                  <span className={cn("absolute top-1 size-6 rounded-full bg-surface shadow-sm transition-[left] duration-150", values.ticketsEnabled ? "left-7" : "left-1")} aria-hidden="true" />
                 </button>
-              </div>
-            </ListCard>
+              </SettingsRow>
+            </SettingsRows>
           ) : null}
 
           {section === "channels" ? <OrderedListEditor kind="FollowUpChannel" title="Follow-up channels" description="Tracker → Follow-ups → “Where”. Drag ⋮⋮ to reorder; removing one never changes old follow-ups." initial={lists.channels.values} customized={lists.channels.customized} addPlaceholder="e.g. WhatsApp" /> : null}
@@ -282,7 +267,6 @@ export function ProfileForm({ email, initial, lists, ai, initialSection }: { ema
               <TagListEditor kind="ResourceTag" noun={{ one: "resource", many: "resources" }} initial={lists.resourceTags} />
             </ListCard>
           ) : null}
-        </div>
       </div>
 
       {/* Save bar for the account / sprint / work-log settings — only once something changed. */}
@@ -293,6 +277,32 @@ export function ProfileForm({ email, initial, lists, ai, initialSection }: { ema
           <Button onClick={save} loading={pending}>Save changes</Button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** A settings card of label/control rows (2026-10-08 redesign). */
+function SettingsRows({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section aria-label={title} className="overflow-hidden rounded-2xl border border-border bg-surface">
+      <h2 className="border-b border-border px-5 py-4 text-lg font-semibold tracking-[-0.015em] text-text md:px-6">{title}</h2>
+      <div className="divide-y divide-border">{children}</div>
+    </section>
+  );
+}
+
+function SettingsRow({ label, hint, htmlFor, labelId, children }: { label: string; hint?: string; htmlFor?: string; labelId?: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-3 px-5 py-5 md:grid-cols-[16rem_minmax(0,1fr)] md:items-center md:gap-8 md:px-6">
+      <div>
+        {htmlFor ? (
+          <label htmlFor={htmlFor} className="text-sm font-semibold text-text">{label}</label>
+        ) : (
+          <p id={labelId} className="text-sm font-semibold text-text">{label}</p>
+        )}
+        {hint ? <p className="mt-0.5 text-sm text-text-muted">{hint}</p> : null}
+      </div>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }

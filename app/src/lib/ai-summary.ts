@@ -2,7 +2,7 @@ import "server-only";
 
 /**
  * AI text via OpenRouter (OpenAI-compatible chat API, plain fetch): work-log
- * summaries here, sprint reports in lib/reports.ts.
+ * summaries and titles here, sprint reports in lib/reports.ts.
  * The key and models come from lib/ai-settings.ts (the user's Profile key, else
  * OPENROUTER_API_KEY). There is deliberately NO non-AI fallback (the user asked
  * for AI or nothing): failures come back as an `AiFailure` the UI explains.
@@ -12,15 +12,22 @@ const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const TIMEOUT_MS = 90_000;
 const MAX_INPUT_CHARS = 16_000;
 
-// Short on purpose: the reader wants "what did I do that day" at a glance.
-const SYSTEM_PROMPT = `Summarise this developer's work log for one day so they can recall it at a glance.
-Reply with ONLY 3–6 Markdown bullet points ("- "), each under 15 words, at most 70 words in total.
-Cover the main work, to-dos finished, and any blocker or overdue to-do. Mention ticket keys (e.g. 24488) but not full titles.
+// Everything in the log, one line per item, scannable (owner, 2026-10-09: tickets,
+// work done, to-dos, follow-ups and notes; meetings are not in the input).
+const SYSTEM_PROMPT = `Summarise this developer's work log for one day so they can recall all of it at a glance.
+Reply with ONLY Markdown bullet points ("- "), one per item, each under 20 words, at most 170 words in total.
+Cover every section present, in this order: ticket work (start with the ticket key, e.g. "25917:"), other work done,
+to-dos finished, to-dos still due or overdue (start those with "Overdue:" or "Due:"), follow-ups (who, about what, where it stands), notes.
 No headings, no section labels, no intro or closing line, no reasoning. Merge repeated items.
 Use only facts in the log.`;
 
 /** Longer than this means the model ignored the brief (often it's its reasoning). */
-const MAX_SUMMARY_CHARS = 700;
+const MAX_SUMMARY_CHARS = 1400;
+
+// A log title in the style the owner writes by hand: "Indexing Issue Fixed | Field Limit Module Doc".
+const TITLE_PROMPT = `Write a title for this developer's work day.
+Reply with ONLY the title: the 1–3 most important pieces of work, each 2–5 words in Title Case, joined by " | ".
+At most 70 characters. No quotes, no date, no ticket numbers, no trailing punctuation. Use only facts in the log.`;
 // Reasoning models sometimes answer with their working instead of the answer.
 const REASONING_LEAK = /thinking process|analy[sz]e the (request|input)|constraints?:|let's structure|output format:/i;
 
@@ -47,6 +54,16 @@ export function aiFailureMessage({ reason, model }: { reason: AiFailure; model?:
   return `${AI_FAILURE_MESSAGE[reason]}${model ? ` (Model used: ${model}.)` : ""}`;
 }
 
+type CompleteOptions = {
+  system: string;
+  user: string;
+  maxChars: number;
+  maxTokens: number;
+  accept?: (text: string) => string | null;
+  /** Off for JSON replies: they echo the user's own notes, which may contain "constraints:" etc. `accept` validates them instead. */
+  checkReasoning?: boolean;
+};
+
 /**
  * One chat completion with the guards every caller needs: a reply that was cut
  * off (`cut_off`), is longer than `maxChars`, reads like leaked reasoning, or is
@@ -56,7 +73,7 @@ export function aiFailureMessage({ reason, model }: { reason: AiFailure; model?:
  */
 export async function openRouterComplete(
   config: OpenRouterConfig,
-  options: { system: string; user: string; maxChars: number; maxTokens: number; accept?: (text: string) => string | null },
+  options: CompleteOptions,
 ): Promise<AiResult> {
   const first = await completeOnce(config, options);
   if (first.ok || (first.reason !== "cut_off" && first.reason !== "bad_reply")) return first;
@@ -66,7 +83,7 @@ export async function openRouterComplete(
 
 async function completeOnce(
   { apiKey, models }: OpenRouterConfig,
-  { system, user, maxChars, maxTokens, accept }: { system: string; user: string; maxChars: number; maxTokens: number; accept?: (text: string) => string | null },
+  { system, user, maxChars, maxTokens, accept, checkReasoning = true }: CompleteOptions,
 ): Promise<AiResult> {
   try {
     const response = await fetch(ENDPOINT, {
@@ -106,7 +123,7 @@ async function completeOnce(
       console.warn(`[ai] ${model} hit the token limit (${raw?.length ?? 0} chars)`);
       return { ok: false, reason: "cut_off", model };
     }
-    const text = raw && raw.length <= maxChars && !REASONING_LEAK.test(raw) ? (accept ? accept(raw) : raw) : null;
+    const text = raw && raw.length <= maxChars && !(checkReasoning && REASONING_LEAK.test(raw)) ? (accept ? accept(raw) : raw) : null;
     if (!text) {
       console.warn(`[ai] Discarded reply from ${model} (${raw?.length ?? 0} chars): ${(raw ?? "").slice(0, 200).replace(/\n/g, " ⏎ ")}`);
       return { ok: false, reason: "bad_reply", model };
@@ -118,12 +135,30 @@ async function completeOnce(
   }
 }
 
+/** One-line title, tidied: quotes, "Title:" prefixes and a trailing full stop dropped. */
+function acceptTitle(text: string) {
+  const line = text.split("\n").map((part) => part.trim()).find(Boolean) ?? "";
+  const title = line.replace(/^(title\s*:\s*)/i, "").replace(/^["'“”*#\s]+|["'“”*\s]+$/g, "").replace(/\.$/, "").trim();
+  return title.length >= 3 && title.length <= 90 ? title : null;
+}
+
+/** A short title for one day, from the same plain text as the summary. */
+export function titleWithOpenRouter(logText: string, config: OpenRouterConfig): Promise<AiResult> {
+  return openRouterComplete(config, {
+    system: TITLE_PROMPT,
+    user: logText.slice(0, MAX_INPUT_CHARS),
+    maxChars: 200,
+    maxTokens: 1000,
+    accept: acceptTitle,
+  });
+}
+
 /** One day's summary from its plain-text log. */
 export function summarizeWithOpenRouter(logText: string, config: OpenRouterConfig): Promise<AiResult> {
   return openRouterComplete(config, {
     system: SYSTEM_PROMPT,
     user: logText.slice(0, MAX_INPUT_CHARS),
     maxChars: MAX_SUMMARY_CHARS,
-    maxTokens: 2000,
+    maxTokens: 3000,
   });
 }

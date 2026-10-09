@@ -5,7 +5,7 @@
 > **Update the docs** (`AGENTS.md` §2). If you find a better way, or a new task
 > repeats, add or edit a recipe here.
 >
-> Last synced with the codebase: **2026-10-03**
+> Last synced with the codebase: **2026-10-09**
 
 ## Index
 
@@ -19,7 +19,7 @@
 8. [Add or change a design token](#8-add-or-change-a-design-token)
 9. [Seed data](#9-seed-data)
 10. [Run and verify locally](#10-run-and-verify-locally)
-11. [Deploy (Vercel + Neon)](#11-deploy-vercel--neon)
+11. [Deploy (Vercel + Neon)](#11-deploy-vercel--neon) (11a copy live → local, 11b push rows local → live)
 12. [Update the docs](#12-update-the-docs)
 13. [Claude Code skills worth using here](#13-claude-code-skills-worth-using-here)
 ---
@@ -209,6 +209,34 @@ hosted service.
 4. Push → Vercel builds (`postinstall` generates the client; build uses `--webpack`).
 5. Smoke test: register, open today's log, add a ticket update, upload an attachment.
 6. Every schema change after that: run step 3 again **before** the new code goes live.
+
+## 11a. Copy live (Neon) data into the local database
+
+Overwrites the local DB — ask first and back it up. Live runs **Postgres 18**, local
+Docker runs 16 and there is no `pg_dump` on the host, so use the `postgres:18` image:
+
+1. Stop the dev server.
+2. Back up local: `docker exec workspace-db pg_dump -U workspace -d workspace --no-owner > local-backup.sql`.
+3. Dump live (read-only), passing `HOSTED_DATABASE_URL` from `app/.env` as an env var, never on the command line:
+   `docker run --rm -e HOSTED_URL -v "$PWD":/dump postgres:18 pg_dump "$HOSTED_URL" --no-owner --no-privileges --schema=public -f /dump/live.sql`
+4. Replace local: `DROP SCHEMA public CASCADE; CREATE SCHEMA public;` then
+   `docker exec -i workspace-db psql -U workspace -d workspace < live.sql`. Two errors are
+   expected and harmless: `schema "public" already exists` and `transaction_timeout`.
+5. `npx prisma migrate status` (in `app/`) must say up to date; `npx prisma generate`; restart.
+
+## 11b. Push specific local rows to live (Neon)
+
+Writes production — ask first, name the rows, and get a yes for the exact list.
+
+1. Back up live (read-only), as in 11a step 3, into a folder outside the repo.
+2. `prisma migrate status` against both DBs — must be the same migrations.
+3. Diff the rows (e.g. `WorkLog` id/updatedAt/title + child counts) via `\copy … to stdout with csv`
+   on each side; check for `(userId, date)` / `(userId, ticketId)` conflicts with different ids.
+4. Generate the writes from local as one transaction of
+   `insert … select … from json_populate_record(null::"T", '<row_to_json>') on conflict (id) do update set <every column>`,
+   parents first (Ticket → WorkLog → Meeting → TicketWorkUpdate).
+5. Dry-run it on a throwaway `postgres:18` container restored from the backup.
+6. Apply to live with `psql -v ON_ERROR_STOP=1`, then re-run the diff — it must be empty.
 
 ## 12. Update the docs
 

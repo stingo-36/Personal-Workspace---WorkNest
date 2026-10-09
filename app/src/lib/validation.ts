@@ -173,6 +173,12 @@ export const saveLearningNotesSchema = z.object({
   notes: richText(20_000),
 });
 
+/** Body of the leave-the-editor beacon (POST /api/work-logs/[id]/ai-refresh). */
+export const refreshWorkLogAiSchema = z.object({
+  workLogId: idSchema,
+  tzOffset: z.number().int().min(-840).max(840).optional(),
+});
+
 export const generateWorkLogSummarySchema = z.object({
   workLogId: idSchema,
   auto: z.boolean().optional(),
@@ -409,6 +415,73 @@ export const setFollowUpTagsSchema = z.object({
 
 /** A work log's calendar day, for the "to-dos that day" card. */
 export const todosForDaySchema = z.object({ date: followUpDueDateSchema });
+export const trackerForRangeSchema = z.object({ from: z.coerce.date(), to: z.coerce.date() }).refine((value) => value.from < value.to, "`from` must be before `to`");
+
+// --- quick log --------------------------------------------------------------
+
+export const quickLogKindSchema = z.enum(["worklog", "todo", "followup"]);
+
+/** Step 1: the pasted text goes to the AI. Nothing is written. */
+export const draftQuickLogSchema = z.object({
+  kind: quickLogKindSchema,
+  text: z
+    .string()
+    .trim()
+    .min(1, "Paste some text first")
+    .max(12_000, "That's too long — keep it under 12,000 characters"),
+  /** The work log's day. */
+  date: dateOnlySchema,
+  /** The browser's own today, so "tomorrow" / "Friday" resolve in the user's timezone. */
+  today: dateOnlySchema,
+});
+
+/** The work-log template for a day (that day's meeting cards). */
+export const quickLogTemplateSchema = z.object({ date: dateOnlySchema });
+
+const quickFollowUpSchema = z.object({
+  person: z.string().trim().min(1, "Who is the follow-up with?").max(120),
+  subject: cleanLine(300),
+  note: z.string().trim().max(10_000).optional(),
+  channel: followUpChannelSchema.optional(),
+});
+
+/**
+ * Step 2: the reviewed draft, as edited in the preview. Re-validated in full —
+ * ticket keys are looked up again by key + userId, never trusted as ids.
+ */
+export const applyQuickLogSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("worklog"),
+    date: dateOnlySchema,
+    meetings: z
+      .array(z.object({ name: cleanLine(120), notes: z.string().trim().min(1, "Meeting notes are empty").max(20_000) }))
+      .max(20),
+    tickets: z
+      .array(
+        z.object({
+          key: ticketKeySchema,
+          title: optionalCleanLine(300),
+          projectName: optionalCleanLine(160),
+          status: ticketStatusSchema,
+          update: z.string().trim().max(20_000),
+        }),
+      )
+      .max(30),
+    workDone: richText(20_000),
+    followUps: z.array(quickFollowUpSchema).max(20),
+  }),
+  z.object({
+    kind: z.literal("todo"),
+    todos: z
+      .array(z.object({ subject: cleanLine(300), dueDate: followUpDueDateSchema }))
+      .min(1, "Nothing to add")
+      .max(50),
+  }),
+  z.object({
+    kind: z.literal("followup"),
+    followUps: z.array(quickFollowUpSchema).min(1, "Nothing to add").max(30),
+  }),
+]);
 
 // --- profile ---------------------------------------------------------------
 

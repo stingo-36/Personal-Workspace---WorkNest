@@ -12,12 +12,11 @@ import {
   MessageSquareReply,
   Plus,
   RotateCcw,
-  Search,
   Send,
   Star,
   StickyNote,
-  Tag,
   Trash2,
+  X,
 } from "lucide-react";
 import { createContext, useContext, useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -33,7 +32,7 @@ import {
   setFollowUpTags,
 } from "@/actions/follow-ups";
 import { cn } from "@/components/cn";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageBand, bandField } from "@/components/shell/page-band";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Field, FormError } from "@/components/ui/field";
@@ -95,6 +94,8 @@ const VIEWS: Array<{ id: TrackerView; kind: EntryKind; label: string; Icon: type
   { id: "notes", kind: "Note", label: "Notes", Icon: StickyNote },
 ];
 
+const VIEW_OF: Record<EntryKind, TrackerView> = { Task: "todo", FollowUp: "followups", Note: "notes" };
+
 const KIND_LABEL: Record<EntryKind, string> = { Task: "To-do", FollowUp: "Follow-up", Note: "Note" };
 
 /**
@@ -134,6 +135,17 @@ function todayIso() {
 /** The clock never notifies us; a re-render is close enough for a date. */
 function subscribeNever() {
   return () => {};
+}
+
+/**
+ * From lg the opened entry shows in the right-hand panel; below that it opens
+ * as a dialog (the panel would sit under a long list on a phone).
+ */
+const WIDE = "(min-width: 64rem)";
+function subscribeWide(onChange: () => void) {
+  const query = window.matchMedia(WIDE);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
 }
 
 /** "today", "yesterday", "3d ago", or a date once it's more than a week old. */
@@ -210,6 +222,13 @@ function matches(entry: TrackerEntry, needle: string) {
 
 // --- board -------------------------------------------------------------------
 
+/**
+ * Layout (2026-10-09 rebuild, matching Work Logs and Tickets): the slate band
+ * carries the title, the three tabs and search; below it a list panel on the
+ * left and a detail panel on the right. The right panel shows "Needs you"
+ * until something is opened (or a new follow-up / note is being written).
+ * Viewport-fit from lg via `.wl-fit`. No shadows or tinted boxes — borders only.
+ */
 export function TrackerBoard({
   entries,
   people,
@@ -232,7 +251,9 @@ export function TrackerBoard({
   const [view, setView] = useState<TrackerView>(initialView);
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
   const today = useSyncExternalStore(subscribeNever, todayIso, () => serverToday);
+  const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches, () => true);
   const needle = query.trim().toLowerCase();
 
   const byKind = useMemo(() => {
@@ -250,13 +271,30 @@ export function TrackerBoard({
   const repliedCount = byKind.FollowUp.filter((e) => followStateOf(e) === "replied").length;
   const opened = entries.find((entry) => entry.id === openId) ?? null;
   const lists = useMemo(() => ({ channels, noteTags: savedNoteTags }), [channels, savedNoteTags]);
+  const tagSuggestions = mergeTags(noteTags(byKind.Note).map(([tag]) => tag), savedNoteTags);
+  // To-dos are added inline at the top of the list; the other two get a form.
+  const canCompose = composing && view !== "todo";
 
   function choose(next: TrackerView) {
     setView(next);
     setQuery("");
+    setOpenId(null);
+    setComposing(false);
     // Shallow URL update so a refresh or a link lands on the same tab, without
     // a server round-trip on every switch.
     window.history.replaceState(null, "", next === "todo" ? "/tracker" : `/tracker?view=${next}`);
+  }
+
+  /** Open from anywhere (e.g. Needs you): jump to the entry's own tab so its row is highlighted. */
+  function openEntry(entry: TrackerEntry) {
+    if (VIEW_OF[entry.kind] !== view) choose(VIEW_OF[entry.kind]);
+    setComposing(false);
+    setOpenId(entry.id);
+  }
+
+  function startComposing() {
+    setOpenId(null);
+    setComposing(true);
   }
 
   function onTabKey(event: React.KeyboardEvent) {
@@ -268,21 +306,24 @@ export function TrackerBoard({
     document.getElementById(`tracker-tab-${next.id}`)?.focus();
   }
 
+  const composerTitle = view === "followups" ? "New follow-up" : "New note";
+  const composer = view === "followups" ? <AddFollowUp people={people} onSaved={() => setComposing(false)} /> : <AddNote suggestions={tagSuggestions} onSaved={() => setComposing(false)} />;
+
   return (
     <ListsContext.Provider value={lists}>
-    <div className="flex w-full min-w-0 flex-col gap-6">
-      <PageHeader
-        className="mb-0"
+    <div className="wl-fit flex w-full min-w-0 flex-col gap-5">
+      <PageBand
         title="Tracker"
-        description="To-dos, follow-ups and notes in one place."
-      />
-
-      {loadError ? <FormError>{loadError}</FormError> : null}
-
-      <NeedsYou entries={entries} today={today} onGo={choose} onOpen={setOpenId} />
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div role="tablist" aria-label="Tracker lists" onKeyDown={onTabKey} className="flex gap-1 rounded-full border border-border bg-surface-2 p-1">
+        eyebrow="To-dos, follow-ups and notes in one place"
+        actions={
+          <>
+            <label htmlFor="tracker-search" className="sr-only">Search this list</label>
+            <input id="tracker-search" type="search" value={query} placeholder="Search, or #tag" onChange={(event) => setQuery(event.target.value)} className={cn(bandField, "w-full lg:w-72")} />
+          </>
+        }
+      >
+        {/* The tabs are nav-style pills on the band: white when active, outlined when idle. */}
+        <div role="tablist" aria-label="Tracker lists" onKeyDown={onTabKey} className="mt-3.5 flex flex-wrap gap-2">
           {VIEWS.map((item) => {
             const active = view === item.id;
             return (
@@ -296,198 +337,166 @@ export function TrackerBoard({
                 tabIndex={active ? 0 : -1}
                 onClick={() => choose(item.id)}
                 className={cn(
-                  "relative inline-flex h-9 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full px-2 text-sm font-semibold whitespace-nowrap transition-colors duration-150 md:flex-none md:gap-2 md:px-4",
-                  active ? "bg-sidebar text-sidebar-fg shadow-sm" : "text-text-muted hover:text-text",
+                  "inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm font-semibold whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-fg",
+                  active ? "border-transparent bg-sidebar-accent-bg text-sidebar-accent" : "border-sidebar-border text-sidebar-muted hover:bg-sidebar-2 hover:text-sidebar-fg",
                 )}
               >
-                <item.Icon className="size-4 shrink-0 max-md:hidden" aria-hidden="true" />
+                <item.Icon className="size-4 shrink-0" aria-hidden="true" />
                 {item.label}
-                <span className={cn("rounded-full px-1.5 text-xs tabular-nums", active ? "bg-sidebar-accent-bg text-sidebar-fg" : "bg-surface text-text-muted")}>{badge[item.id]}</span>
+                <span className={cn("rounded-full px-1.5 text-xs tabular-nums", active ? "bg-sidebar text-sidebar-fg" : "bg-sidebar-2 text-sidebar-fg")}>{badge[item.id]}</span>
                 {item.id === "followups" && repliedCount > 0 ? (
-                  <span style={tone(FOLLOW_STATE.replied.tone)} className="absolute top-1 right-1 size-2 rounded-full bg-[var(--tone)]" aria-label={`${repliedCount} replied`} />
+                  <span style={tone(FOLLOW_STATE.replied.tone)} className="size-2 rounded-full bg-[var(--tone)]" aria-label={`${repliedCount} replied`} />
                 ) : null}
               </button>
             );
           })}
         </div>
-        <div className="md:w-64">
-          <label htmlFor="tracker-search" className="sr-only">Search this list</label>
-          <Input id="tracker-search" value={query} placeholder="Search" startIcon={<Search />} onChange={(event) => setQuery(event.target.value)} />
-        </div>
+      </PageBand>
+
+      {loadError ? <FormError>{loadError}</FormError> : null}
+
+      <div className="grid items-start gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)]">
+        <section
+          id="tracker-panel"
+          role="tabpanel"
+          aria-labelledby={`tracker-tab-${view}`}
+          className="wl-scroll flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface lg:h-full lg:overflow-y-auto"
+        >
+          {view === "todo" ? <TodoList entries={byKind.Task} today={today} needle={needle} openId={openId} onOpen={openEntry} /> : null}
+          {view === "followups" ? <FollowUpList entries={byKind.FollowUp} today={today} needle={needle} openId={openId} composing={canCompose} onCompose={startComposing} onOpen={openEntry} /> : null}
+          {view === "notes" ? <NoteList entries={byKind.Note} today={today} needle={needle} openId={openId} composing={canCompose} onCompose={startComposing} onOpen={openEntry} /> : null}
+        </section>
+
+        <section
+          aria-label={canCompose && wide ? composerTitle : opened && wide ? opened.subject : "Needs you"}
+          className="order-first flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface lg:order-none lg:h-full"
+        >
+          {wide && canCompose ? (
+            <>
+              <PanelHead eyebrow={view === "followups" ? "Follow-up" : "Note"} title={composerTitle} onClose={() => setComposing(false)} />
+              <PanelBody>{composer}</PanelBody>
+            </>
+          ) : wide && opened ? (
+            <EntryPanel key={opened.id} entry={opened} tagSuggestions={tagSuggestions} onClose={() => setOpenId(null)} />
+          ) : (
+            <NeedsYou entries={entries} today={today} onOpen={openEntry} onShowAll={choose} />
+          )}
+        </section>
       </div>
 
-      <div id="tracker-panel" role="tabpanel" aria-labelledby={`tracker-tab-${view}`} className="flex flex-col gap-5">
-        {view === "todo" ? <TodoView entries={byKind.Task} today={today} needle={needle} onOpen={setOpenId} /> : null}
-        {view === "followups" ? <FollowUpView entries={byKind.FollowUp} people={people} today={today} needle={needle} onOpen={setOpenId} /> : null}
-        {view === "notes" ? <NotesView entries={byKind.Note} today={today} needle={needle} onOpen={setOpenId} /> : null}
-      </div>
-
-      {opened ? <EntryModal key={opened.id} entry={opened} tagSuggestions={mergeTags(noteTags(byKind.Note).map(([tag]) => tag), savedNoteTags)} onClose={() => setOpenId(null)} /> : null}
+      {!wide && canCompose ? (
+        <Modal open size="lg" onClose={() => setComposing(false)} title={composerTitle}>{composer}</Modal>
+      ) : null}
+      {!wide && opened ? (
+        <Modal open size="lg" onClose={() => setOpenId(null)} eyebrow={<EntryEyebrow entry={opened} />} title={<EntryTitle entry={opened} />}>
+          <EntryBody key={opened.id} entry={opened} tagSuggestions={tagSuggestions} onDeleted={() => setOpenId(null)} />
+        </Modal>
+      ) : null}
     </div>
     </ListsContext.Provider>
   );
 }
 
-/** The page's first section: the concrete to-dos and follow-ups needing action now. */
-function NeedsYou({ entries, today, onGo, onOpen }: { entries: TrackerEntry[]; today: string; onGo: (view: TrackerView) => void; onOpen: (id: string) => void }) {
-  const open = entries.filter((entry) => entry.status !== "Done");
-  const tasks = open
-    .filter((entry) => entry.kind === "Task" && entry.dueDate && entry.dueDate <= today)
-    .sort(byDue);
-  const followUps = open
-    .filter((entry) => entry.kind === "FollowUp" && (followStateOf(entry) === "replied" || (entry.dueDate && entry.dueDate <= today)))
-    .sort((a, b) => {
-      const stateOrder = Number(followStateOf(b) === "replied") - Number(followStateOf(a) === "replied");
-      return stateOrder || byDue(a, b);
-    });
-  const total = tasks.length + followUps.length;
+// --- panel parts -------------------------------------------------------------
 
+/** The right panel's header: eyebrow, big title, optional close back to Needs you. */
+function PanelHead({ eyebrow, title, onClose }: { eyebrow: React.ReactNode; title: React.ReactNode; onClose?: () => void }) {
   return (
-    <section aria-labelledby="needs-you-heading" data-reveal className="wl-card overflow-hidden">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-4 md:px-5">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-sidebar text-sidebar-fg" aria-hidden="true">
-          <CircleAlert className="size-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 id="needs-you-heading" className="flex items-center gap-2 text-lg font-semibold tracking-[-0.015em] text-text">
-            Needs you
-            <span className="rounded-full bg-surface-3 px-2 py-0.5 text-xs font-semibold text-accent-text tabular-nums">{total}</span>
-          </h2>
-          <p className="text-sm text-text-muted">Today&apos;s tasks and follow-ups that need your attention.</p>
-        </div>
+    <header className="flex shrink-0 items-start gap-4 border-b border-border px-5 py-4 md:px-7">
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-2 text-sm text-text-subtle">{eyebrow}</p>
+        <h2 className="mt-1 text-3xl font-semibold tracking-[-0.03em] text-text [overflow-wrap:anywhere]">{title}</h2>
       </div>
+      {onClose ? (
+        <Button size="sm" variant="ghost" iconOnly aria-label="Close" title="Close" onClick={onClose} className="mt-1 shrink-0">
+          <X aria-hidden="true" />
+        </Button>
+      ) : null}
+    </header>
+  );
+}
 
-      {total === 0 ? (
-        <p className="flex items-center gap-2 px-4 py-5 text-sm text-text-muted md:px-5">
-          <Check className="size-4 text-primary" aria-hidden="true" />
-          You&apos;re all caught up — nothing overdue or waiting on you.
-        </p>
-      ) : (
-        <div className={cn("grid gap-px bg-border", tasks.length && followUps.length && "lg:grid-cols-2")}>
-          {tasks.length ? (
-            <NeedGroup title="To-dos" count={tasks.length} onViewAll={() => onGo("todo")}>
-              {tasks.slice(0, 4).map((entry) => (
-                <NeedRow
-                  key={entry.id}
-                  entry={entry}
-                  label={entry.dueDate! < today ? "Overdue" : "Today"}
-                  danger={entry.dueDate! < today}
-                  onOpen={() => onOpen(entry.id)}
-                />
-              ))}
-            </NeedGroup>
-          ) : null}
-          {followUps.length ? (
-            <NeedGroup title="Follow-ups" count={followUps.length} onViewAll={() => onGo("followups")}>
-              {followUps.slice(0, 4).map((entry) => (
-                <NeedRow
-                  key={entry.id}
-                  entry={entry}
-                  label={followStateOf(entry) === "replied" ? "Reply" : "Nudge"}
-                  onOpen={() => onOpen(entry.id)}
-                />
-              ))}
-            </NeedGroup>
-          ) : null}
-        </div>
-      )}
+function PanelBody({ children }: { children: React.ReactNode }) {
+  return <div className="wl-scroll min-h-0 flex-1 overflow-y-auto px-5 py-5 md:px-7">{children}</div>;
+}
+
+/** A small uppercase group label inside the list panel, sticky while its rows scroll. */
+function Group({ label, count, toneValue, children }: { label: string; count: number; toneValue?: string; children: React.ReactNode }) {
+  return (
+    <section aria-label={label}>
+      <h3 style={toneValue ? tone(toneValue) : undefined} className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-surface px-4 py-2 text-2xs font-semibold tracking-[0.08em] text-text-subtle uppercase">
+        {toneValue ? <span className="size-2 rounded-full bg-[var(--tone)]" aria-hidden="true" /> : null}
+        {label}
+        <span className="tabular-nums">{count}</span>
+      </h3>
+      <ul>{children}</ul>
     </section>
   );
 }
 
-function NeedGroup({ title, count, onViewAll, children }: { title: string; count: number; onViewAll: () => void; children: React.ReactNode }) {
+/**
+ * One list row. The title button covers the whole row (its ::after), so `lead`
+ * and `trailing` controls sit above it with `relative z-10`.
+ */
+function Row({ selected = false, muted = false, title, lead, meta, trailing, onOpen }: { selected?: boolean; muted?: boolean; title: string; lead?: React.ReactNode; meta?: React.ReactNode; trailing?: React.ReactNode; onOpen: () => void }) {
   return (
-    <div className="min-w-0 bg-surface">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3 md:px-5">
-        <h3 className="font-semibold text-text">{title}</h3>
-        <span className="text-xs font-semibold text-text-muted tabular-nums">{count}</span>
-        <button type="button" onClick={onViewAll} className="tap-area ml-auto cursor-pointer text-sm font-semibold text-accent-text hover:underline">View all</button>
-      </div>
-      <ul className="divide-y divide-border">{children}</ul>
-    </div>
-  );
-}
-
-function NeedRow({ entry, label, danger = false, onOpen }: { entry: TrackerEntry; label: string; danger?: boolean; onOpen: () => void }) {
-  return (
-    <li className="group relative flex min-w-0 items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface-2 md:px-5">
-      {entry.kind === "Task" ? <DoneToggle entry={entry} /> : <MessageSquareReply className="size-4 shrink-0 text-accent-text" aria-hidden="true" />}
-      <button type="button" onClick={onOpen} title={entry.subject} className="min-w-0 flex-1 cursor-pointer text-left after:absolute after:inset-0">
-        <span className="block truncate text-sm font-semibold text-text">{entry.subject}</span>
-        {entry.kind === "FollowUp" && entry.person ? <span className="block truncate text-xs text-text-muted">{entry.person}</span> : null}
+    <li className={cn("relative flex items-start gap-3 border-b border-border px-4 py-3 transition-colors duration-150 last:border-b-0", selected ? "bg-primary-subtle" : "hover:bg-surface-2")}>
+      {lead ? <span className="relative z-10 flex shrink-0 pt-0.5">{lead}</span> : null}
+      <button type="button" onClick={onOpen} aria-current={selected ? "true" : undefined} title={title} className="min-w-0 flex-1 cursor-pointer text-left after:absolute after:inset-0">
+        <span className={cn("line-clamp-2 text-sm font-semibold leading-snug [overflow-wrap:anywhere]", muted ? "text-text-subtle line-through" : "text-text")}>{title}</span>
+        {meta ? <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-subtle">{meta}</span> : null}
       </button>
-      {entry.pinned ? <PinnedStar /> : null}
-      <span className={cn("shrink-0 rounded-full px-2 py-1 text-xs font-bold", danger ? "bg-danger text-danger-fg" : "bg-primary-subtle text-accent-text")}>{label}</span>
+      {trailing ? <span className="relative z-10 flex shrink-0 items-center gap-1.5 pt-0.5">{trailing}</span> : null}
     </li>
   );
 }
 
-// --- shared bits -------------------------------------------------------------
-
-/** A quiet list card with an optional small heading row. */
-/**
- * A list of rows. Two weights, so the eye lands in the right place first:
- *   `focus` — what needs you now (Overdue, Today, They replied): a toned left
- *             edge and a normal-case heading at body size;
- *   default — everything else: a quiet uppercase micro-label.
- */
-function ListCard({ label, count, toneValue, focus = false, children }: { label?: string; count?: number; toneValue?: string; focus?: boolean; children: React.ReactNode }) {
-  const headingId = label ? `tracker-list-${label.toLowerCase().replace(/\W+/g, "-")}` : undefined;
-  return (
-    <section
-      aria-labelledby={headingId}
-      data-reveal
-      style={toneValue ? tone(toneValue) : undefined}
-      className={cn("wl-card overflow-hidden", focus && "border-l-4 border-l-[var(--tone)]")}
-    >
-      {label && focus ? (
-        <h2 id={headingId} className="flex items-center gap-2 border-b border-border px-4 py-3 text-base font-semibold text-text md:px-5">
-          {label}
-          <span className={cn("grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-xs font-bold tabular-nums", TINT_CHIP)}>{count}</span>
-        </h2>
-      ) : label ? (
-        <h2 id={headingId} className="flex items-center gap-2 border-b border-border bg-surface-2 px-4 py-2 text-xs font-bold tracking-[0.06em] uppercase text-text md:px-5">
-          {toneValue ? <span className="size-2 rounded-full bg-[var(--tone)]" aria-hidden="true" /> : null}
-          {label}
-          <span className="font-semibold text-text-muted tabular-nums">{count}</span>
-        </h2>
-      ) : null}
-      <ul className="divide-y divide-border">{children}</ul>
-    </section>
-  );
-}
-
-/** "Completed · 4" — a collapsed list at the bottom of each tab. */
+/** "Completed · 4" — collapsed at the foot of the list panel. */
 function Collapsed({ label, count, children }: { label: string; count: number; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
   if (count === 0) return null;
   return (
-    <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full px-2 py-1 text-sm font-semibold text-text-muted transition-colors duration-150 hover:bg-surface-2 hover:text-text"
-      >
-        <ChevronDown className={cn("size-4 transition-transform duration-150 motion-reduce:transition-none", !open && "-rotate-90")} aria-hidden="true" />
-        {label} <span className="font-medium text-text-subtle tabular-nums">{count}</span>
-      </button>
-      {open ? children : null}
-    </div>
+    <details className="group/done border-t border-border">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold text-accent-text hover:bg-surface-2 [&::-webkit-details-marker]:hidden">
+        <ChevronDown className="size-4 -rotate-90 transition-transform duration-150 group-open/done:rotate-0 motion-reduce:transition-none" aria-hidden="true" />
+        {label}
+        <span className="rounded-full bg-sidebar px-2 py-0.5 text-xs text-sidebar-fg tabular-nums">{count}</span>
+      </summary>
+      <ul className="border-t border-border">{children}</ul>
+    </details>
   );
 }
 
 function Empty({ icon: Icon, title, text }: { icon: typeof ListTodo; title: string; text: string }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border-strong px-6 py-12 text-center">
+    <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
       <Icon className="size-6 text-text-subtle" aria-hidden="true" />
       <p className="text-md font-semibold text-text">{title}</p>
-      <p className="max-w-[44ch] text-sm text-text-muted">{text}</p>
+      <p className="max-w-[40ch] text-sm text-text-muted">{text}</p>
     </div>
   );
 }
 
-/** The date as a chip: solid red when late, solid teal for today, tinted otherwise. */
+/** The slate "New …" button at the top of the follow-ups and notes lists. */
+function ComposeButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <div className="border-b border-border p-4">
+      <button
+        type="button"
+        aria-pressed={active}
+        onClick={onClick}
+        className={cn(
+          "inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full text-sm font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+          active ? "border border-sidebar bg-surface text-text" : "bg-sidebar text-sidebar-fg hover:bg-sidebar-3",
+        )}
+      >
+        <Plus className="size-4" aria-hidden="true" />
+        {label}
+      </button>
+    </div>
+  );
+}
+
+/** The date as a chip: solid red when late, solid blue for today, tinted otherwise. */
 function DueChip({ entry, today, prefix }: { entry: TrackerEntry; today: string; prefix?: string }) {
   if (!entry.dueDate || entry.status === "Done") return null;
   const late = entry.dueDate < today;
@@ -511,6 +520,24 @@ function PinnedStar() {
   return <Star className="size-3.5 shrink-0 fill-current text-warning" aria-label="Important" />;
 }
 
+function NotesCount({ count }: { count: number }) {
+  if (!count) return null;
+  return (
+    <span className="inline-flex items-center gap-1" title={`${count} ${count === 1 ? "note" : "notes"}`}>
+      <StickyNote className="size-3.5" aria-hidden="true" />
+      {count}
+    </span>
+  );
+}
+
+function Avatar({ name, toneValue }: { name: string; toneValue: string }) {
+  return (
+    <span style={tone(toneValue)} className={cn("grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold", TINT_CHIP)} aria-hidden="true">
+      {initials(name)}
+    </span>
+  );
+}
+
 /** A round checkbox that ticks an entry off without opening it. */
 function DoneToggle({ entry, label }: { entry: TrackerEntry; label?: string }) {
   const { run, pending } = useRun();
@@ -525,8 +552,8 @@ function DoneToggle({ entry, label }: { entry: TrackerEntry; label?: string }) {
       disabled={pending}
       onClick={() => run(() => setFollowUpStatus({ followUpId: entry.id, status: done ? "Open" : "Done" }), done ? "Reopened" : "Done")}
       className={cn(
-        "relative z-10 grid size-5 shrink-0 cursor-pointer place-items-center rounded-full border-2 transition-colors duration-150 disabled:cursor-wait disabled:opacity-60",
-        done ? "border-primary bg-primary text-primary-fg" : "border-border-strong text-transparent hover:border-primary hover:text-primary",
+        "grid size-5 shrink-0 cursor-pointer place-items-center rounded-full border-2 transition-colors duration-150 disabled:cursor-wait disabled:opacity-60",
+        done ? "border-primary bg-primary text-primary-fg" : "border-border-strong bg-surface text-transparent hover:border-primary hover:text-primary",
       )}
     >
       <Check className="size-3" strokeWidth={3} aria-hidden="true" />
@@ -534,7 +561,7 @@ function DoneToggle({ entry, label }: { entry: TrackerEntry; label?: string }) {
   );
 }
 
-/** The ★ toggle used in every add row. */
+/** The ★ toggle used in every add form. */
 function StarToggle({ value, onChange }: { value: boolean; onChange: (value: boolean) => void }) {
   return (
     <button
@@ -550,7 +577,7 @@ function StarToggle({ value, onChange }: { value: boolean; onChange: (value: boo
   );
 }
 
-/** Create an entry, then pin it if asked. Shared by the three add rows. */
+/** Create an entry, then pin it if asked. Shared by the three add forms. */
 function useCreate(onSaved: () => void) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -576,38 +603,102 @@ function useCreate(onSaved: () => void) {
   return { create, pending, error, setError };
 }
 
-/**
- * Form on the left (sticky), list on the right from lg; stacked below that.
- * Uses the full page width like every other workspace page.
- */
-function SideLayout({ composer, children }: { composer: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="grid items-start gap-5 lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[24rem_minmax(0,1fr)]">
-      <div className="lg:sticky lg:top-20">{composer}</div>
-      <div className="flex min-w-0 flex-col gap-5">{children}</div>
-    </div>
-  );
-}
+// --- needs you (the right panel's default) ----------------------------------
 
-/** A titled form card for adding a follow-up or a note. */
-function Composer({ title, icon: Icon, error, children }: { title: string; icon: typeof ListTodo; error?: string; children: React.ReactNode }) {
+/**
+ * What to act on now: overdue/today to-dos, replies to answer, nudges due.
+ * Shown whenever nothing is open, so the page still opens on concrete work.
+ */
+/** Rows per group; the rest is one link away in its own tab. */
+const NEEDS_PREVIEW = 4;
+
+function NeedsYou({ entries, today, onOpen, onShowAll }: { entries: TrackerEntry[]; today: string; onOpen: (entry: TrackerEntry) => void; onShowAll: (view: TrackerView) => void }) {
+  const open = entries.filter((entry) => entry.status !== "Done");
+  const tasks = open.filter((entry) => entry.kind === "Task" && entry.dueDate && entry.dueDate <= today).sort(byDue);
+  const replied = open.filter((entry) => entry.kind === "FollowUp" && followStateOf(entry) === "replied").sort(byRecent);
+  const nudges = open.filter((entry) => entry.kind === "FollowUp" && followStateOf(entry) === "waiting" && entry.dueDate && entry.dueDate <= today).sort(byDue);
+  const total = tasks.length + replied.length + nudges.length;
+
+  const stats = [
+    { label: "Open to-dos", value: open.filter((e) => e.kind === "Task").length },
+    { label: "Due this week", value: open.filter((e) => e.kind === "Task" && e.dueDate && differenceInCalendarDays(parseISO(e.dueDate), parseISO(today)) <= 7).length },
+    { label: "Waiting on others", value: open.filter((e) => e.kind === "FollowUp" && followStateOf(e) === "waiting").length },
+    { label: "Notes", value: open.filter((e) => e.kind === "Note").length },
+  ];
+
+  const groups = [
+    {
+      label: "Overdue & due today",
+      view: "todo" as TrackerView,
+      items: tasks,
+      row: (entry: TrackerEntry) => (
+        <Row key={entry.id} title={entry.subject} lead={<DoneToggle entry={entry} />} meta={<DueChip entry={entry} today={today} />} trailing={entry.pinned ? <PinnedStar /> : null} onOpen={() => onOpen(entry)} />
+      ),
+    },
+    {
+      label: "They replied — your turn",
+      view: "followups" as TrackerView,
+      items: replied,
+      row: (entry: TrackerEntry) => (
+        <Row key={entry.id} title={entry.subject} lead={<Avatar name={entry.person ?? "?"} toneValue={FOLLOW_STATE.replied.tone} />} meta={<span suppressHydrationWarning><b className="font-semibold text-text">{entry.person}</b> replied {ago(entry.updates[0]!.occurredAt, today)}</span>} trailing={entry.pinned ? <PinnedStar /> : null} onOpen={() => onOpen(entry)} />
+      ),
+    },
+    {
+      label: "Nudge due",
+      view: "followups" as TrackerView,
+      items: nudges,
+      row: (entry: TrackerEntry) => (
+        <Row key={entry.id} title={entry.subject} lead={<Avatar name={entry.person ?? "?"} toneValue={FOLLOW_STATE.waiting.tone} />} meta={<><b className="font-semibold text-text">{entry.person}</b><DueChip entry={entry} today={today} prefix="nudge" /></>} trailing={entry.pinned ? <PinnedStar /> : null} onOpen={() => onOpen(entry)} />
+      ),
+    },
+  ].filter((group) => group.items.length > 0);
+
   return (
-    // Recessed (tinted, no shadow) so your notes and follow-ups — not the form — are
-    // what the eye lands on. The white fields and the navy button still stand out.
-    <section aria-label={title} className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-2 p-4 md:p-5">
-      <h2 className="flex items-center gap-2 text-base font-semibold text-text">
-        <Icon className="size-4 text-accent-text" aria-hidden="true" />
-        {title}
-      </h2>
-      {children}
-      {error ? <p className="text-sm font-medium text-danger" role="alert">{error}</p> : null}
-    </section>
+    <>
+      <PanelHead
+        eyebrow={<span suppressHydrationWarning>{format(parseISO(today), "EEEE d MMM")}</span>}
+        title={total === 0 ? "All caught up" : `${total} ${total === 1 ? "thing needs" : "things need"} you`}
+      />
+      <PanelBody>
+        <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-border md:grid-cols-4">
+          {stats.map((stat, index) => (
+            <div key={stat.label} className={cn("px-4 py-3", index > 0 && "border-l border-border", index === 2 && "max-md:border-l-0 max-md:border-t", index === 3 && "max-md:border-t")}>
+              <dt className="text-xs text-text-muted">{stat.label}</dt>
+              <dd className="mt-0.5 text-2xl font-semibold tracking-[-0.02em] text-text tabular-nums">{stat.value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {groups.length === 0 ? (
+          <p className="mt-8 flex items-center gap-2 text-base text-text-muted">
+            <Check className="size-5 text-primary" aria-hidden="true" />
+            Nothing overdue, due today, or waiting on a reply from you.
+          </p>
+        ) : (
+          <div className="mt-6 flex flex-col gap-6">
+            {groups.map((group) => (
+              <section key={group.label} aria-label={group.label}>
+                <h3 className="text-sm font-semibold text-text">
+                  {group.label} <span className="font-normal text-text-subtle tabular-nums">· {group.items.length}</span>
+                </h3>
+                <ul className="mt-2 overflow-hidden rounded-xl border border-border">{group.items.slice(0, NEEDS_PREVIEW).map(group.row)}</ul>
+                {group.items.length > NEEDS_PREVIEW ? (
+                  <button type="button" onClick={() => onShowAll(group.view)} className="mt-2 cursor-pointer text-sm font-semibold text-accent-text hover:underline">
+                    {group.items.length - NEEDS_PREVIEW} more in {group.view === "todo" ? "To-do" : "Follow-ups"} →
+                  </button>
+                ) : null}
+              </section>
+            ))}
+          </div>
+        )}
+      </PanelBody>
+    </>
   );
 }
 
 // --- to-do -------------------------------------------------------------------
 
-function TodoView({ entries, today, needle, onOpen }: { entries: TrackerEntry[]; today: string; needle: string; onOpen: (id: string) => void }) {
+function TodoList({ entries, today, needle, openId, onOpen }: { entries: TrackerEntry[]; today: string; needle: string; openId: string | null; onOpen: (entry: TrackerEntry) => void }) {
   const { open, done } = useMemo(() => {
     const sections: Record<TodoSection, TrackerEntry[]> = { overdue: [], today: [], upcoming: [], someday: [] };
     const finished: TrackerEntry[] = [];
@@ -623,6 +714,7 @@ function TodoView({ entries, today, needle, onOpen }: { entries: TrackerEntry[];
     return { open: sections, done: finished.sort(byCompleted) };
   }, [entries, today, needle]);
 
+  // Top to bottom by urgency: Overdue → Today → Upcoming → Someday; empty groups hide.
   const visible = (Object.keys(TODO_SECTIONS) as TodoSection[]).filter((key) => open[key].length > 0);
 
   return (
@@ -635,21 +727,14 @@ function TodoView({ entries, today, needle, onOpen }: { entries: TrackerEntry[];
           text={needle ? "Try a different word." : "Add a to-do above. Give it a date to see it under Today or Upcoming."}
         />
       ) : (
-        // Overdue + Today first and emphasised; Upcoming + Someday below, quieter.
-        [visible.filter((key) => key === "overdue" || key === "today"), visible.filter((key) => key === "upcoming" || key === "someday")]
-          .filter((row) => row.length > 0)
-          .map((row) => (
-            <div key={row.join("-")} className={cn("grid items-start gap-5", row.length > 1 && "lg:grid-cols-2")}>
-              {row.map((key) => (
-                <ListCard key={key} label={TODO_SECTIONS[key].label} count={open[key].length} toneValue={TODO_SECTIONS[key].tone} focus={key === "overdue" || key === "today"}>
-                  {open[key].map((entry) => <TodoRow key={entry.id} entry={entry} today={today} onOpen={() => onOpen(entry.id)} />)}
-                </ListCard>
-              ))}
-            </div>
-          ))
+        visible.map((key) => (
+          <Group key={key} label={TODO_SECTIONS[key].label} count={open[key].length} toneValue={TODO_SECTIONS[key].tone}>
+            {open[key].map((entry) => <TodoRow key={entry.id} entry={entry} today={today} selected={entry.id === openId} onOpen={() => onOpen(entry)} />)}
+          </Group>
+        ))
       )}
       <Collapsed label="Completed" count={done.length}>
-        <ListCard>{done.map((entry) => <TodoRow key={entry.id} entry={entry} today={today} onOpen={() => onOpen(entry.id)} />)}</ListCard>
+        {done.map((entry) => <TodoRow key={entry.id} entry={entry} today={today} selected={entry.id === openId} onOpen={() => onOpen(entry)} />)}
       </Collapsed>
     </>
   );
@@ -669,66 +754,55 @@ function AddTodo() {
   }
 
   return (
-    <div className="wl-card flex flex-col gap-2 p-3">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center">
-        <label htmlFor="add-todo" className="sr-only">New to-do</label>
-        <Input
-          id="add-todo"
-          value={subject}
-          maxLength={300}
-          placeholder="Add a to-do…"
-          startIcon={<Plus />}
-          endIcon={subject ? <CornerDownLeft /> : undefined}
-          aria-invalid={error ? true : undefined}
-          className="min-w-0 flex-1"
-          onChange={(event) => { setSubject(event.target.value); setError(undefined); }}
-          onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); save(); } }}
-        />
-        <div className="flex items-center gap-2">
-          <label htmlFor="add-todo-date" className="sr-only">Due date (optional)</label>
-          <Input id="add-todo-date" type="date" value={date} className="min-w-0 flex-1 md:w-40 md:flex-none" onChange={(event) => setDate(event.target.value)} />
-          <StarToggle value={pinned} onChange={setPinned} />
-          <Button onClick={save} loading={pending} size="lg">Add</Button>
-        </div>
+    <div className="flex flex-col gap-2 border-b border-border p-4">
+      <label htmlFor="add-todo" className="sr-only">New to-do</label>
+      <Input
+        id="add-todo"
+        value={subject}
+        maxLength={300}
+        placeholder="Add a to-do…"
+        startIcon={<Plus />}
+        endIcon={subject ? <CornerDownLeft /> : undefined}
+        aria-invalid={error ? true : undefined}
+        onChange={(event) => { setSubject(event.target.value); setError(undefined); }}
+        onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); save(); } }}
+      />
+      <div className="flex items-center gap-2">
+        <label htmlFor="add-todo-date" className="sr-only">Due date (optional)</label>
+        <Input id="add-todo-date" type="date" value={date} className="min-w-0 flex-1" onChange={(event) => setDate(event.target.value)} />
+        <StarToggle value={pinned} onChange={setPinned} />
+        <Button onClick={save} loading={pending}>Add</Button>
       </div>
       {error ? <p className="px-1 text-sm font-medium text-danger" role="alert">{error}</p> : null}
     </div>
   );
 }
 
-function TodoRow({ entry, today, onOpen }: { entry: TrackerEntry; today: string; onOpen: () => void }) {
+function TodoRow({ entry, today, selected, onOpen }: { entry: TrackerEntry; today: string; selected: boolean; onOpen: () => void }) {
   const isDone = entry.status === "Done";
-  const notes = entry.updates.length;
+  const hasMeta = Boolean((entry.dueDate && !isDone) || entry.updates.length || (isDone && entry.completedAt));
   return (
-    <li className="group relative flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-surface-2 md:px-5">
-      <DoneToggle entry={entry} />
-      <button
-        type="button"
-        onClick={onOpen}
-        className={cn(
-          "min-w-0 flex-1 cursor-pointer truncate text-left text-base font-medium leading-snug after:absolute after:inset-0",
-          isDone ? "text-text-subtle line-through" : "text-text",
-        )}
-        // Long titles are cut to one line; hovering shows the whole thing.
-        title={entry.subject}
-      >
-        {entry.subject}
-      </button>
-      {entry.pinned ? <PinnedStar /> : null}
-      {notes ? (
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-text-subtle" title={`${notes} ${notes === 1 ? "note" : "notes"}`}>
-          <StickyNote className="size-3.5" aria-hidden="true" />
-          {notes}
-        </span>
+    <Row
+      title={entry.subject}
+      selected={selected}
+      muted={isDone}
+      lead={<DoneToggle entry={entry} />}
+      meta={hasMeta ? (
+        <>
+          <DueChip entry={entry} today={today} />
+          {isDone && entry.completedAt ? <span>Done {format(parseISO(entry.completedAt), "d MMM")}</span> : null}
+          <NotesCount count={entry.updates.length} />
+        </>
       ) : null}
-      <DueChip entry={entry} today={today} />
-    </li>
+      trailing={entry.pinned ? <PinnedStar /> : null}
+      onOpen={onOpen}
+    />
   );
 }
 
 // --- follow-ups --------------------------------------------------------------
 
-function FollowUpView({ entries, people, today, needle, onOpen }: { entries: TrackerEntry[]; people: string[]; today: string; needle: string; onOpen: (id: string) => void }) {
+function FollowUpList({ entries, today, needle, openId, composing, onCompose, onOpen }: { entries: TrackerEntry[]; today: string; needle: string; openId: string | null; composing: boolean; onCompose: () => void; onOpen: (entry: TrackerEntry) => void }) {
   const groups = useMemo(() => {
     const next: Record<FollowState, TrackerEntry[]> = { replied: [], waiting: [], closed: [] };
     for (const entry of entries) if (matches(entry, needle)) next[followStateOf(entry)].push(entry);
@@ -739,33 +813,31 @@ function FollowUpView({ entries, people, today, needle, onOpen }: { entries: Tra
     return next;
   }, [entries, needle]);
 
-  const nothingOpen = groups.replied.length + groups.waiting.length === 0;
-
   return (
-    <SideLayout composer={<AddFollowUp people={people} />}>
-      {nothingOpen ? (
+    <>
+      <ComposeButton label="New follow-up" active={composing} onClick={onCompose} />
+      {groups.replied.length + groups.waiting.length === 0 ? (
         <Empty
           icon={MessageSquare}
           title={needle ? "Nothing matches" : "No one to chase"}
-          text={needle ? "Try a different word." : "When you ask someone for something, add it above. It waits here until they reply."}
+          text={needle ? "Try a different word." : "When you ask someone for something, add it here. It waits until they reply."}
         />
       ) : (
-        (["replied", "waiting"] as const).map((state) =>
-          groups[state].length ? (
-            <ListCard key={state} label={FOLLOW_STATE[state].label} count={groups[state].length} toneValue={FOLLOW_STATE[state].tone} focus={state === "replied"}>
-              {groups[state].map((entry) => <FollowUpRow key={entry.id} entry={entry} today={today} onOpen={() => onOpen(entry.id)} />)}
-            </ListCard>
-          ) : null,
-        )
+        // Your turn first, then the people you're waiting on.
+        (["replied", "waiting"] as const).filter((state) => groups[state].length > 0).map((state) => (
+          <Group key={state} label={FOLLOW_STATE[state].label} count={groups[state].length} toneValue={FOLLOW_STATE[state].tone}>
+            {groups[state].map((entry) => <FollowUpRow key={entry.id} entry={entry} today={today} selected={entry.id === openId} onOpen={() => onOpen(entry)} />)}
+          </Group>
+        ))
       )}
       <Collapsed label="Closed" count={groups.closed.length}>
-        <ListCard>{groups.closed.map((entry) => <FollowUpRow key={entry.id} entry={entry} today={today} onOpen={() => onOpen(entry.id)} />)}</ListCard>
+        {groups.closed.map((entry) => <FollowUpRow key={entry.id} entry={entry} today={today} selected={entry.id === openId} onOpen={() => onOpen(entry)} />)}
       </Collapsed>
-    </SideLayout>
+    </>
   );
 }
 
-function AddFollowUp({ people }: { people: string[] }) {
+function AddFollowUp({ people, onSaved }: { people: string[]; onSaved: () => void }) {
   const [person, setPerson] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -773,7 +845,7 @@ function AddFollowUp({ people }: { people: string[] }) {
   const [channel, setChannel] = useState(channels[0] ?? "Slack");
   const [date, setDate] = useState("");
   const [pinned, setPinned] = useState(false);
-  const { create, pending, error, setError } = useCreate(() => { setPerson(""); setSubject(""); setMessage(""); setDate(""); setPinned(false); });
+  const { create, pending, error, setError } = useCreate(() => { setPerson(""); setSubject(""); setMessage(""); setDate(""); setPinned(false); onSaved(); });
 
   function save() {
     if (pending) return;
@@ -798,18 +870,20 @@ function AddFollowUp({ people }: { people: string[] }) {
   const saveOnModEnter = (event: React.KeyboardEvent) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); save(); } };
 
   return (
-    <Composer title="New follow-up" icon={Send} error={error}>
-      <Field label="Who" htmlFor="add-fu-person" required>
-        <Input id="add-fu-person" value={person} list="add-fu-people" placeholder="e.g. Ashwini" maxLength={120} onChange={(event) => { setPerson(event.target.value); setError(undefined); }} />
-        <datalist id="add-fu-people">{people.map((name) => <option key={name} value={name} />)}</datalist>
-      </Field>
-      <Field label="Title" htmlFor="add-fu-subject" required>
-        <Input id="add-fu-subject" value={subject} maxLength={300} placeholder="e.g. SMTP credentials for Timebase" onChange={(event) => { setSubject(event.target.value); setError(undefined); }} />
-      </Field>
+    <ComposerFields error={error}>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Who" htmlFor="add-fu-person" required>
+          <Input id="add-fu-person" value={person} list="add-fu-people" placeholder="e.g. Ashwini" maxLength={120} onChange={(event) => { setPerson(event.target.value); setError(undefined); }} />
+          <datalist id="add-fu-people">{people.map((name) => <option key={name} value={name} />)}</datalist>
+        </Field>
+        <Field label="Title" htmlFor="add-fu-subject" required>
+          <Input id="add-fu-subject" value={subject} maxLength={300} placeholder="e.g. SMTP credentials for Timebase" onChange={(event) => { setSubject(event.target.value); setError(undefined); }} />
+        </Field>
+      </div>
       <Field label="What did you ask or tell them?" htmlFor="add-fu-message">
         <Textarea id="add-fu-message" rows={4} value={message} placeholder="e.g. Shared the setup doc and asked for the credentials." onChange={(event) => setMessage(event.target.value)} onKeyDown={saveOnModEnter} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         <Field label="Where" htmlFor="add-fu-channel">
           <ChannelSelect id="add-fu-channel" value={channel} onChange={setChannel} />
         </Field>
@@ -819,12 +893,12 @@ function AddFollowUp({ people }: { people: string[] }) {
       </div>
       <div className="flex items-center gap-2">
         <StarToggle value={pinned} onChange={setPinned} />
-        <Button onClick={save} loading={pending} size="lg" className="flex-1">
+        <Button onClick={save} loading={pending} size="lg">
           <Plus aria-hidden="true" />
           Add follow-up
         </Button>
       </div>
-    </Composer>
+    </ComposerFields>
   );
 }
 
@@ -833,87 +907,32 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts.at(-1)?.[0] ?? "") : "")).toUpperCase() || "?";
 }
 
-function FollowUpRow({ entry, today, onOpen }: { entry: TrackerEntry; today: string; onOpen: () => void }) {
-  const { run, pending } = useRun();
+function FollowUpRow({ entry, today, selected, onOpen }: { entry: TrackerEntry; today: string; selected: boolean; onOpen: () => void }) {
   const state = followStateOf(entry);
-  const meta = FOLLOW_STATE[state];
   const last = entry.updates[0];
   const person = entry.person ?? "Someone";
-
   const lastLine = last
     ? last.fromThem
-      ? `${person} replied ${ago(last.occurredAt, today)}`
-      : `You · ${ago(last.occurredAt, today)} via ${last.channel}`
-    : `Added ${ago(entry.createdAt, today)}`;
-  // The body: the newest message with real text that isn't just the title again.
-  const body = entry.updates.find((update) => update.note.trim() && update.note.trim() !== entry.subject.trim());
+      ? `replied ${ago(last.occurredAt, today)}`
+      : `you wrote ${ago(last.occurredAt, today)} via ${last.channel}`
+    : `added ${ago(entry.createdAt, today)}`;
 
   return (
-    <li className="group relative flex items-start gap-3 px-4 py-3.5 transition-colors duration-150 hover:bg-surface-2 md:items-center md:px-5">
-      <span style={tone(meta.tone)} className={cn("grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold", TINT_CHIP)} aria-hidden="true">
-        {initials(person)}
-      </span>
-
-      <div className="min-w-0 flex-1">
-        <button
-          type="button"
-          onClick={onOpen}
-          className={cn("flex w-full cursor-pointer items-center gap-1.5 text-left after:absolute after:inset-0", state === "closed" && "text-text-subtle")}
-        >
-          <span className="min-w-0 truncate text-base font-semibold text-text" title={person}>{person}</span>
-          {entry.pinned ? <PinnedStar /> : null}
-        </button>
-        <p title={entry.subject} className={cn("mt-0.5 truncate text-sm", state === "closed" ? "text-text-subtle line-through" : "text-text")}>{entry.subject}</p>
-        {body ? (
-          <p
-            title={body.note}
-            className="mt-1.5 line-clamp-2 border-l-2 border-border-strong pl-2.5 text-sm leading-relaxed whitespace-pre-line text-text-muted [overflow-wrap:anywhere]"
-          >
-            <span className="font-semibold text-text">{body.fromThem ? person : "You"}:</span> {body.note}
-          </p>
-        ) : null}
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-text-muted">
-          <span suppressHydrationWarning>{lastLine}</span>
+    <Row
+      title={entry.subject}
+      selected={selected}
+      muted={state === "closed"}
+      lead={<Avatar name={person} toneValue={FOLLOW_STATE[state].tone} />}
+      meta={
+        <>
+          <span><b className="font-semibold text-text">{person}</b> · <span suppressHydrationWarning>{lastLine}</span></span>
           {/* Once they've replied there's no one to nudge. */}
           {state === "waiting" ? <DueChip entry={entry} today={today} prefix="nudge" /> : null}
-        </div>
-      </div>
-
-      {/* Quick actions sit above the row's click target. */}
-      <div className="relative z-10 flex shrink-0 items-center gap-1.5">
-        {state === "waiting" ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={pending}
-            title="They replied"
-            onClick={() => run(() => addFollowUpUpdate({ followUpId: entry.id, note: "", fromThem: true, channel: last?.channel ?? "Slack" }), "Marked as replied")}
-          >
-            <MessageSquareReply aria-hidden="true" />
-            <span className="max-md:hidden">Got reply</span>
-          </Button>
-        ) : null}
-        {state !== "closed" ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            iconOnly
-            disabled={pending}
-            aria-label={`Close follow-up with ${person}`}
-            title="Close — nothing left to chase"
-            onClick={() => run(() => setFollowUpStatus({ followUpId: entry.id, status: "Done" }), "Closed")}
-            className="size-8"
-          >
-            <Check aria-hidden="true" />
-          </Button>
-        ) : (
-          <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setFollowUpStatus({ followUpId: entry.id, status: "Open" }), "Reopened")}>
-            <RotateCcw aria-hidden="true" />
-            Reopen
-          </Button>
-        )}
-      </div>
-    </li>
+        </>
+      }
+      trailing={entry.pinned ? <PinnedStar /> : null}
+      onOpen={onOpen}
+    />
   );
 }
 
@@ -931,11 +950,10 @@ function noteTags(entries: TrackerEntry[]) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
-function NotesView({ entries, today, needle, onOpen }: { entries: TrackerEntry[]; today: string; needle: string; onOpen: (id: string) => void }) {
+function NoteList({ entries, today, needle, openId, composing, onCompose, onOpen }: { entries: TrackerEntry[]; today: string; needle: string; openId: string | null; composing: boolean; onCompose: () => void; onOpen: (entry: TrackerEntry) => void }) {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [grouped, setGrouped] = useState(false);
   const allTags = useMemo(() => noteTags(entries.filter((entry) => entry.status !== "Done")), [entries]);
-  const { noteTags: savedTags } = useContext(ListsContext);
   // A tag that's gone (last note untagged/archived) stops filtering.
   const activeTag = tagFilter && allTags.some(([tag]) => tag === tagFilter) ? tagFilter : null;
 
@@ -961,23 +979,20 @@ function NotesView({ entries, today, needle, onOpen }: { entries: TrackerEntry[]
     return [...byTag.entries()].sort(([a, x], [b, y]) => (a === "" ? 1 : b === "" ? -1 : y.length - x.length || a.localeCompare(b)));
   }, [grouped, open]);
 
-  const grid = (list: TrackerEntry[]) => (
-    <ul data-reveal-stagger className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {list.map((entry) => <NoteCard key={entry.id} entry={entry} today={today} onOpen={() => onOpen(entry.id)} onTag={setTagFilter} />)}
-    </ul>
-  );
+  const row = (entry: TrackerEntry) => <NoteRow key={entry.id} entry={entry} today={today} selected={entry.id === openId} onOpen={() => onOpen(entry)} />;
 
   return (
-    <SideLayout composer={<AddNote suggestions={mergeTags(allTags.map(([tag]) => tag), savedTags)} />}>
+    <>
+      <ComposeButton label="New note" active={composing} onClick={onCompose} />
       {allTags.length ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Filter notes by tag" className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+        <div className="flex flex-col gap-2.5 border-b border-border px-4 py-3">
+          <div role="group" aria-label="Filter notes by tag" className="flex flex-wrap gap-1.5">
             <TagChip label="All" active={!activeTag} onClick={() => setTagFilter(null)} />
             {allTags.map(([tag, count]) => (
               <TagChip key={tag} tag={tag} label={tag} count={count} active={activeTag === tag} onClick={() => setTagFilter(activeTag === tag ? null : tag)} />
             ))}
           </div>
-          <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm font-semibold text-text">
+          <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-semibold text-text">
             <input type="checkbox" checked={grouped} onChange={(event) => setGrouped(event.target.checked)} className="size-4 cursor-pointer accent-[var(--c-primary)]" />
             Group by tag
           </label>
@@ -988,24 +1003,17 @@ function NotesView({ entries, today, needle, onOpen }: { entries: TrackerEntry[]
         <Empty
           icon={StickyNote}
           title={needle || activeTag ? "Nothing matches" : "No notes yet"}
-          text={needle || activeTag ? "Try a different word or tag." : "Write one with the form. Open a note later to add updates to it."}
+          text={needle || activeTag ? "Try a different word or tag." : "Write one with New note. Open a note later to add updates to it."}
         />
       ) : groups ? (
         groups.map(([tag, list]) => (
-          <section key={tag || "untagged"} aria-label={tag ? `#${tag}` : "Untagged"} className="flex flex-col gap-2">
-            <h2 className="flex items-center gap-1.5 text-sm font-bold text-text">
-              <Tag className="size-3.5 text-accent-text" aria-hidden="true" />
-              {tag ? `#${tag}` : "Untagged"}
-              <span className="font-semibold text-text-subtle tabular-nums">{list.length}</span>
-            </h2>
-            {grid(list)}
-          </section>
+          <Group key={tag || "untagged"} label={tag ? `#${tag}` : "Untagged"} count={list.length}>{list.map(row)}</Group>
         ))
       ) : (
-        grid(open)
+        <ul>{open.map(row)}</ul>
       )}
-      <Collapsed label="Archived" count={archived.length}>{grid(archived)}</Collapsed>
-    </SideLayout>
+      <Collapsed label="Archived" count={archived.length}>{archived.map(row)}</Collapsed>
+    </>
   );
 }
 
@@ -1027,12 +1035,12 @@ function TagChip({ label, tag, count, active, onClick }: { label: string; tag?: 
   );
 }
 
-function AddNote({ suggestions }: { suggestions: string[] }) {
+function AddNote({ suggestions, onSaved }: { suggestions: string[]; onSaved: () => void }) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [pinned, setPinned] = useState(false);
-  const { create, pending, error, setError } = useCreate(() => { setSubject(""); setBody(""); setTags([]); setPinned(false); });
+  const { create, pending, error, setError } = useCreate(() => { setSubject(""); setBody(""); setTags([]); setPinned(false); onSaved(); });
 
   function save() {
     if (pending) return;
@@ -1041,7 +1049,7 @@ function AddNote({ suggestions }: { suggestions: string[] }) {
   }
 
   return (
-    <Composer title="New note" icon={StickyNote} error={error}>
+    <ComposerFields error={error}>
       <Field label="Title" htmlFor="add-note" required>
         <Input id="add-note" value={subject} maxLength={300} placeholder="e.g. Staging deploy checklist" aria-invalid={error ? true : undefined} onChange={(event) => { setSubject(event.target.value); setError(undefined); }} />
       </Field>
@@ -1060,53 +1068,75 @@ function AddNote({ suggestions }: { suggestions: string[] }) {
       </Field>
       <div className="flex items-center gap-2">
         <StarToggle value={pinned} onChange={setPinned} />
-        <Button onClick={save} loading={pending} size="lg" className="flex-1">
+        <Button onClick={save} loading={pending} size="lg">
           <Plus aria-hidden="true" />
           Save note
         </Button>
       </div>
-    </Composer>
+    </ComposerFields>
   );
 }
 
-function NoteCard({ entry, today, onOpen, onTag }: { entry: TrackerEntry; today: string; onOpen: () => void; onTag: (tag: string) => void }) {
-  const latest = entry.updates[0];
-  const count = entry.updates.length;
+/** The fields of a new follow-up / note, in the right panel (or a dialog on phones). */
+function ComposerFields({ error, children }: { error?: string; children: React.ReactNode }) {
   return (
-    <li className="group relative flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 shadow-xs transition-[border-color,box-shadow] duration-150 hover:border-border-strong hover:shadow-md">
-      <div className="flex items-start gap-2">
-        <button
-          type="button"
-          onClick={onOpen}
-          title={entry.subject}
-          className={cn("line-clamp-2 min-w-0 flex-1 cursor-pointer text-left text-md font-semibold leading-snug [overflow-wrap:anywhere] after:absolute after:inset-0 after:rounded-[inherit]", entry.status === "Done" ? "text-text-subtle" : "text-text group-hover:text-accent-text")}
-        >
-          {entry.subject}
-        </button>
-        {entry.pinned ? <PinnedStar /> : null}
-      </div>
-      {latest?.note ? <p className="line-clamp-4 whitespace-pre-line text-sm leading-relaxed text-text-muted [overflow-wrap:anywhere]">{latest.note}</p> : null}
-      {entry.tags.length ? (
-        // Above the card's click target so a tag filters instead of opening the note.
-        <div className="relative z-10 flex flex-wrap gap-1">
-          {entry.tags.map((tag) => (
-            <button key={tag} type="button" onClick={() => onTag(tag)} title={`Show #${tag} notes`} className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-semibold text-text transition-colors duration-150 hover:bg-surface-2">
-              <TagIcon tag={tag} className="size-3" />
-              {tag}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <p className="mt-auto pt-1 text-xs text-text-subtle" suppressHydrationWarning>
-        {count > 1 ? `${count} updates · ` : ""}Updated {ago(entry.updatedAt, today)}
-      </p>
-    </li>
+    <div className="flex max-w-3xl flex-col gap-5">
+      {children}
+      {error ? <p className="text-sm font-medium text-danger" role="alert">{error}</p> : null}
+    </div>
   );
 }
 
-// --- details popup -----------------------------------------------------------
+function NoteRow({ entry, today, selected, onOpen }: { entry: TrackerEntry; today: string; selected: boolean; onOpen: () => void }) {
+  const latest = entry.updates[0];
+  return (
+    <Row
+      title={entry.subject}
+      selected={selected}
+      onOpen={onOpen}
+      meta={
+        <>
+          {latest?.note ? <span className="line-clamp-2 w-full text-sm leading-relaxed whitespace-pre-line text-text-muted [overflow-wrap:anywhere]">{latest.note}</span> : null}
+          {entry.tags.map((tag) => <span key={tag} className="font-semibold text-accent-text">#{tag}</span>)}
+          <span suppressHydrationWarning>
+            {entry.updates.length > 1 ? `${entry.updates.length} updates · ` : ""}{entry.status === "Done" ? "Archived" : "Updated"} {ago(entry.updatedAt, today)}
+          </span>
+        </>
+      }
+      trailing={entry.pinned ? <PinnedStar /> : null}
+    />
+  );
+}
 
-function EntryModal({ entry, tagSuggestions, onClose }: { entry: TrackerEntry; tagSuggestions: string[]; onClose: () => void }) {
+// --- the opened entry ----------------------------------------------------------
+
+function EntryEyebrow({ entry }: { entry: TrackerEntry }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {KIND_LABEL[entry.kind]}
+      {entry.pinned ? <><span aria-hidden="true">·</span><Star className="size-3.5 fill-current text-warning" aria-hidden="true" />Important</> : null}
+    </span>
+  );
+}
+
+function EntryTitle({ entry }: { entry: TrackerEntry }) {
+  return <span className={cn("[overflow-wrap:anywhere]", entry.status === "Done" && entry.kind !== "Note" && "text-text-muted line-through")}>{entry.subject}</span>;
+}
+
+/** The opened entry in the right panel (from lg). */
+function EntryPanel({ entry, tagSuggestions, onClose }: { entry: TrackerEntry; tagSuggestions: string[]; onClose: () => void }) {
+  return (
+    <>
+      <PanelHead eyebrow={<EntryEyebrow entry={entry} />} title={<EntryTitle entry={entry} />} onClose={onClose} />
+      <PanelBody>
+        <EntryBody entry={entry} tagSuggestions={tagSuggestions} onDeleted={onClose} />
+      </PanelBody>
+    </>
+  );
+}
+
+/** Facts, date, actions, add-an-update and the history — shared by the panel and the phone dialog. */
+function EntryBody({ entry, tagSuggestions, onDeleted }: { entry: TrackerEntry; tagSuggestions: string[]; onDeleted: () => void }) {
   const { run, pending } = useRun();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isDone = entry.status === "Done";
@@ -1125,71 +1155,58 @@ function EntryModal({ entry, tagSuggestions, onClose }: { entry: TrackerEntry; t
   ];
 
   return (
-    <Modal
-      open
-      size="lg"
-      onClose={onClose}
-      eyebrow={
-        <span className="flex items-center gap-1.5">
-          {KIND_LABEL[kind]}
-          {entry.pinned ? <><span aria-hidden="true">·</span><Star className="size-3.5 fill-current text-warning" aria-hidden="true" />Important</> : null}
-        </span>
-      }
-      title={<span className={cn("[overflow-wrap:anywhere]", isDone && kind !== "Note" && "text-text-muted line-through")}>{entry.subject}</span>}
-    >
-      <div className={cn("flex flex-col gap-6", pending && "opacity-60")}>
-        <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-          <dl className="flex flex-wrap gap-x-8 gap-y-4">
-            {facts.map((fact) => (
-              <div key={fact.label} className="min-w-0">
-                <dt className="text-xs text-text-subtle">{fact.label}</dt>
-                <dd className="mt-1 text-sm font-medium text-text">{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-          {kind !== "Note" && !isDone ? (
-            <div className="min-w-0">
-              <label htmlFor={`due-${entry.id}`} className="text-xs text-text-subtle">{kind === "Task" ? "Due" : "Nudge on"}</label>
-              <Input
-                id={`due-${entry.id}`}
-                type="date"
-                value={entry.dueDate ?? ""}
-                className="mt-1 w-44"
-                onChange={(event) => run(() => rescheduleFollowUp({ followUpId: entry.id, dueDate: event.target.value || null }), event.target.value ? "Date set" : "Date cleared")}
-              />
+    <div className={cn("flex max-w-3xl flex-col gap-6", pending && "opacity-60")}>
+      <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+        <dl className="flex flex-wrap gap-x-8 gap-y-4">
+          {facts.map((fact) => (
+            <div key={fact.label} className="min-w-0">
+              <dt className="text-xs text-text-subtle">{fact.label}</dt>
+              <dd className="mt-1 text-sm font-medium text-text">{fact.value}</dd>
             </div>
-          ) : null}
-        </div>
-
-        {kind === "Note" ? <NoteTagsEditor entry={entry} suggestions={tagSuggestions} /> : null}
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant={isDone ? "secondary" : "primary"} onClick={() => run(() => setFollowUpStatus({ followUpId: entry.id, status: isDone ? "Open" : "Done" }), doneToast)}>
-            {isDone ? <RotateCcw aria-hidden="true" /> : <Check aria-hidden="true" />}
-            {doneLabel}
-          </Button>
-          <div className="ml-auto flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              iconOnly
-              aria-pressed={entry.pinned}
-              aria-label={entry.pinned ? "Remove from important" : "Mark important"}
-              title={entry.pinned ? "Remove from important" : "Mark important"}
-              onClick={() => run(() => setFollowUpPinned({ followUpId: entry.id, pinned: !entry.pinned }), entry.pinned ? "Removed from important" : "Marked important")}
-            >
-              <Star aria-hidden="true" className={cn(entry.pinned && "fill-current text-warning")} />
-            </Button>
-            <Button size="sm" variant="ghost" iconOnly className="hover:text-danger" aria-label={`Delete ${entry.subject}`} title="Delete" onClick={() => setConfirmDelete(true)}>
-              <Trash2 aria-hidden="true" />
-            </Button>
+          ))}
+        </dl>
+        {kind !== "Note" && !isDone ? (
+          <div className="min-w-0">
+            <label htmlFor={`due-${entry.id}`} className="block text-xs text-text-subtle">{kind === "Task" ? "Due" : "Nudge on"}</label>
+            <Input
+              id={`due-${entry.id}`}
+              type="date"
+              value={entry.dueDate ?? ""}
+              className="mt-1 w-44"
+              onChange={(event) => run(() => rescheduleFollowUp({ followUpId: entry.id, dueDate: event.target.value || null }), event.target.value ? "Date set" : "Date cleared")}
+            />
           </div>
-        </div>
-
-        <AddUpdateForm key={entry.updates.length} entry={entry} />
-
-        <Timeline entry={entry} />
+        ) : null}
       </div>
+
+      {kind === "Note" ? <NoteTagsEditor entry={entry} suggestions={tagSuggestions} /> : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant={isDone ? "secondary" : "primary"} onClick={() => run(() => setFollowUpStatus({ followUpId: entry.id, status: isDone ? "Open" : "Done" }), doneToast)}>
+          {isDone ? <RotateCcw aria-hidden="true" /> : <Check aria-hidden="true" />}
+          {doneLabel}
+        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            iconOnly
+            aria-pressed={entry.pinned}
+            aria-label={entry.pinned ? "Remove from important" : "Mark important"}
+            title={entry.pinned ? "Remove from important" : "Mark important"}
+            onClick={() => run(() => setFollowUpPinned({ followUpId: entry.id, pinned: !entry.pinned }), entry.pinned ? "Removed from important" : "Marked important")}
+          >
+            <Star aria-hidden="true" className={cn(entry.pinned && "fill-current text-warning")} />
+          </Button>
+          <Button size="sm" variant="ghost" iconOnly className="hover:text-danger" aria-label={`Delete ${entry.subject}`} title="Delete" onClick={() => setConfirmDelete(true)}>
+            <Trash2 aria-hidden="true" />
+          </Button>
+        </div>
+      </div>
+
+      <AddUpdateForm key={entry.updates.length} entry={entry} />
+
+      <Timeline entry={entry} />
 
       <ConfirmationDialog
         open={confirmDelete}
@@ -1200,13 +1217,14 @@ function EntryModal({ entry, tagSuggestions, onClose }: { entry: TrackerEntry; t
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => {
           setConfirmDelete(false);
-          onClose();
+          onDeleted();
           run(() => deleteFollowUp({ followUpId: entry.id }), "Deleted");
         }}
       />
-    </Modal>
+    </div>
   );
 }
+
 
 /** Tags are labels, not history: edited in place, saved on every change. */
 function NoteTagsEditor({ entry, suggestions }: { entry: TrackerEntry; suggestions: string[] }) {
@@ -1254,7 +1272,7 @@ function AddUpdateForm({ entry }: { entry: TrackerEntry }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface-2 p-3.5">
+    <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
       {isFollowUp ? (
         <div role="radiogroup" aria-label="Who said it" className="flex w-fit gap-1 rounded-full border border-border bg-surface p-0.5">
           {[

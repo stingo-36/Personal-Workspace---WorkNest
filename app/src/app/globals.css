@@ -152,13 +152,15 @@
 }
 
 /* Navigation sits on navy chrome, so links need a white focus ring. */
-#app-nav,
-#app-mobile-menu {
+.app-account,
+#app-dock {
   --c-ring: var(--c-sidebar-accent);
   --c-ring-offset: var(--c-sidebar);
 }
 
-/* Workspace palette = the homepage palette (2026-10-03; replaced charcoal/teal/navy).
+/* Workspace palette = SLATE & SKY (2026-10-08, chosen from the redesign canvas):
+   slate chrome #1e293b, sky accent #0369a1 (white 5.9:1), text #0f172a, white page,
+   visible borders #94a3b8. Status hues unchanged. Previous: the homepage palette (2026-10-03; replaced charcoal/teal/navy).
    Accent is the homepage BLUE (user rejected purple the same day).
    Base: ink #2a2c3f, muted #575c72, page #f3f5f9, white cards, and the homepage tones —
    purple #9b5cf0, blue #7d9cf4, pink #f58ea8, orange #f8aa4b, red #ec6f6f. The light tones
@@ -167,28 +169,28 @@
    pink #b8395f (5.5), red #c43e3e (5.1), orange #9a560f (5.7). Tints are 10% hue on white. */
 .app-shell {
   color-scheme: light;
-  --c-overlay: rgba(42, 44, 63, 0.55);   /* ink scrim */
-  --c-bg: #f3f5f9;              /* homepage page colour */
+  --c-overlay: rgba(15, 23, 42, 0.55);   /* ink scrim */
+  --c-bg: #ffffff;              /* homepage page colour */
   --c-surface: #ffffff;         /* inputs, menus, items nested in cards */
-  --c-surface-2: #eef0f6;       /* toolbars, insets, hover */
-  --c-surface-3: #e4e6ef;       /* pressed / selected */
+  --c-surface-2: #f1f5f9;       /* toolbars, insets, hover */
+  --c-surface-3: #e2e8f0;       /* pressed / selected */
   --c-card: #ffffff;            /* default card fill */
-  --c-card-tint: #f2f5fe;       /* blue 10% — emphasis cards only */
-  --c-card-navy: #eef1fb;       /* softer blue — emphasis cards only */
-  --c-text: #2a2c3f;            /* homepage ink, 13.7:1 */
-  --c-text-muted: #575c72;      /* homepage muted, 6.6:1 */
-  --c-text-subtle: #62677d;     /* 5.6:1 — sublabels, hints */
+  --c-card-tint: #f0f9ff;       /* blue 10% — emphasis cards only */
+  --c-card-navy: #e0f2fe;       /* softer blue — emphasis cards only */
+  --c-text: #0f172a;            /* homepage ink, 13.7:1 */
+  --c-text-muted: #475569;      /* homepage muted, 6.6:1 */
+  --c-text-subtle: #64748b;     /* 5.6:1 — sublabels, hints */
   --c-text-inverse: #ffffff;
-  --c-border: #dcdfe8;          /* homepage hairline — decorative edges, dividers */
-  --c-border-strong: #8b90a3;   /* functional control edges, 3.2:1 */
-  --c-primary: #4562c9;         /* blue — fills, icons, accents (white 5.5:1) */
-  --c-primary-strong: #3d57b6;  /* links, small labels */
-  --c-primary-hover: #3d57b6;
-  --c-primary-active: #33499a;
+  --c-border: #94a3b8;          /* homepage hairline — decorative edges, dividers */
+  --c-border-strong: #64748b;   /* functional control edges, 3.2:1 */
+  --c-primary: #0369a1;         /* blue — fills, icons, accents (white 5.5:1) */
+  --c-primary-strong: #075985;  /* links, small labels */
+  --c-primary-hover: #075985;
+  --c-primary-active: #0c4a6e;
   --c-primary-fg: #ffffff;
-  --c-primary-subtle: #e3e9fc;  /* selected state */
-  --c-accent-text: #3d57b6;     /* 6.5:1 */
-  --c-ring: #5f7de6;            /* homepage blue, a step deeper for 3:1 */
+  --c-primary-subtle: #e0f2fe;  /* selected state */
+  --c-accent-text: #075985;     /* 6.5:1 */
+  --c-ring: #0284c7;            /* homepage blue, a step deeper for 3:1 */
   --c-ring-offset: var(--c-bg);
   --c-danger: #c43e3e;          /* homepage red, deepened */
   --c-danger-fg: #ffffff;
@@ -196,69 +198,74 @@
   --c-warning: #9a560f;         /* homepage orange, deepened */
   --c-warning-fg: #ffffff;
   --c-warning-subtle: #fef5e9;
-  --c-info: #4562c9;            /* homepage blue, deepened */
+  --c-info: #0369a1;            /* homepage blue, deepened */
   --c-info-fg: #ffffff;
-  --c-info-subtle: #f2f5fe;
+  --c-info-subtle: #f0f9ff;
   /* success stays green — the homepage has no green and "done" must still read as done */
   /* Ticket workflow: every stage is a light tint + soft ring + dark label, one homepage hue
      per stage (user decision 2026-10-03 — no solid badges): In progress blue, Sent to QA
      orange, Ready for production pink, Released muted ink, Done green. Labels 6.2–8.8:1. */
-  --c-status-open: #8b90a3;
-  --c-status-open-bg: #eef0f5;
-  --c-status-open-fg: #3d4156;
-  --c-status-progress: #4562c9;      /* blue — In progress */
-  --c-status-progress-bg: #f2f5fe;
-  --c-status-progress-fg: #3a52a8;
+  --c-status-open: #64748b;
+  --c-status-open-bg: #f1f5f9;
+  --c-status-open-fg: #334155;
+  --c-status-progress: #0369a1;      /* blue — In progress */
+  --c-status-progress-bg: #f0f9ff;
+  --c-status-progress-fg: #075985;
   --c-status-testing: #f8aa4b;       /* orange — Sent to QA */
   --c-status-testing-bg: #fef5e9;
   --c-status-testing-fg: #8a4d0d;
   --c-status-waiting: #f58ea8;       /* pink — Ready for production */
   --c-status-waiting-bg: #fef4f6;
   --c-status-waiting-fg: #a3324f;
-  --c-status-closed: #8b90a3;        /* muted ink — Released */
-  --c-status-closed-bg: #eef0f5;
-  --c-status-closed-fg: #3d4156;
+  --c-status-closed: #64748b;        /* muted ink — Released */
+  --c-status-closed-bg: #f1f5f9;
+  --c-status-closed-fg: #334155;
   --c-status-completed: #3fa66a;     /* green — Done */
   --c-status-completed-bg: #ebf6ef;
   --c-status-completed-fg: #166534;
   --c-status-blocked: #c43e3e;
   --c-status-blocked-bg: #fdf1f1;
   --c-status-blocked-fg: #b23535;
-  --c-priority-low: #575c72;
-  --c-priority-low-bg: #eceef4;
-  --c-priority-medium: #4562c9;
-  --c-priority-medium-bg: #f2f5fe;
+  --c-priority-low: #475569;
+  --c-priority-low-bg: #f1f5f9;
+  --c-priority-medium: #0369a1;
+  --c-priority-medium-bg: #f0f9ff;
   --c-priority-high: #9a560f;
   --c-priority-high-bg: #fef5e9;
   --c-priority-urgent: #b8395f;
   --c-priority-urgent-bg: #fef4f6;
-  --c-sidebar: #2a2c3f;         /* ink chrome — primary buttons, dark hero (homepage pills) */
-  --c-sidebar-2: #34374d;
-  --c-sidebar-3: #3e4159;
+  --c-sidebar: #1e293b;         /* ink chrome — primary buttons, dark hero (homepage pills) */
+  --c-sidebar-2: #273449;
+  --c-sidebar-3: #334155;
   --c-sidebar-fg: #ffffff;
-  --c-sidebar-muted: #d6d7e3;
-  --c-sidebar-subtle: #a7a9bd;
+  --c-sidebar-muted: #cbd5e1;
+  --c-sidebar-subtle: #94a3b8;
   --c-sidebar-border: rgba(255, 255, 255, 0.18);
   --c-sidebar-accent: #ffffff;
   --c-sidebar-accent-bg: rgba(255, 255, 255, 0.16);
   /* Tracker tones — one homepage hue per group, deepened for white text (≥4.5:1). */
   --c-tk-overdue: #c43e3e;      /* red */
-  --c-tk-today: #4562c9;        /* blue */
+  --c-tk-today: #0369a1;        /* blue */
   --c-tk-upcoming: #9a560f;     /* orange */
-  --c-tk-undated: #62677d;      /* muted ink — Someday */
-  --c-tk-done: #4562c9;
+  --c-tk-undated: #64748b;      /* muted ink — Someday */
+  --c-tk-done: #0369a1;
   --c-tk-waiting: #9a560f;      /* follow-up: no reply yet (orange) */
   --c-tk-replied: #b8395f;      /* follow-up: they replied, your turn (pink) */
   --c-tk-on: #ffffff;
-  --sh-card: 0 1px 2px rgba(42, 44, 63, 0.05), 0 6px 20px -10px rgba(42, 44, 63, 0.16);
-  --sh-card-hover: 0 1px 2px rgba(42, 44, 63, 0.06), 0 16px 34px -14px rgba(42, 44, 63, 0.28);
-  --sh-button: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(28, 30, 47, 0.22), 0 6px 14px -8px rgba(42, 44, 63, 0.55);
-  --sh-md: 0 10px 28px -10px rgba(42, 44, 63, 0.26), 0 2px 6px -2px rgba(42, 44, 63, 0.10);
-  --sh-lg: 0 24px 56px -16px rgba(28, 30, 47, 0.32), 0 6px 14px -6px rgba(42, 44, 63, 0.12);
+  /* No shadows on the page (owner, 2026-10-09): surfaces are separated by visible
+     borders only. --sh-md / --sh-lg stay for layers that float over the page
+     (menus, toasts, dialogs), which would otherwise blend into what's behind. */
+  --sh-xs: none;
+  --sh-sm: none;
+  --sh-card: none;
+  --sh-card-hover: none;
+  --sh-button: none;
+  --sh-md: 0 10px 28px -10px rgba(15, 23, 42, 0.26), 0 2px 6px -2px rgba(15, 23, 42, 0.10);
+  --sh-lg: 0 24px 56px -16px rgba(15, 23, 42, 0.32), 0 6px 14px -6px rgba(15, 23, 42, 0.12);
 }
 
 /* The body behind the shell (overscroll bounce) matches the page colour. */
-html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
+html:not(.dark) body:has(.app-shell) { --c-bg: #ffffff; }
 
 /* Dark: navy-based, not grey. */
 .dark .app-shell {
@@ -313,6 +320,200 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
   --c-tk-on: #0e1a22;
 }
 
+/* Work-log editor as one document (2026-10-08 redesign): inside `.wl-doc` the
+   section cards lose their box and become chapters under a dark rule, so the log
+   reads top to bottom like a page. Unlayered, so it wins over the section
+   components' own padding/fill utilities. */
+.wl-doc .wl-card {
+  margin-top: 2.25rem;
+  padding-left: 0;
+  padding-right: 0;
+  background: transparent;
+  border: 0;
+  border-top: 2px solid var(--c-text);
+  border-radius: 0;
+  box-shadow: none;
+}
+.wl-doc .wl-card > * { padding-left: 0; padding-right: 0; }
+.wl-doc .wl-card h2 {
+  font-size: var(--text-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Work Logs header band (2026-10-08): joined to the nav — no gap above, full
+   bleed sideways — in its own deep-sky colour, rounded only at the bottom.
+   main's top padding is the clamp in `.app-shell main#main`; the sideways
+   overshoot is clipped by main's overflow-x: clip. */
+.wl-band {
+  margin-top: calc(-1 * clamp(1rem, 2vw, 1.5rem));
+  margin-inline: calc(50% - 50vw);
+}
+.wl-band-off { background: repeating-linear-gradient(135deg, var(--c-sidebar-muted) 0 3px, transparent 3px 6px); }
+/* Work Logs fits the screen from lg (like Tickets at xl): screen − nav (4rem + 1px)
+   − the smaller bottom padding; the band's negative margin eats main's top padding. */
+@media (min-width: 64rem) {
+  .app-shell:has(.wl-fit) main#main { padding-bottom: var(--dock-clearance); }
+  .wl-fit { height: calc(100dvh - var(--dock-clearance)); min-height: 36rem; margin-top: calc(-1 * clamp(1rem, 2vw, 1.5rem)); }
+  .wl-fit > .wl-band { margin-top: 0; }
+}
+
+/* Section dock (2026-10-09): the nav's sections float at the bottom of every
+   screen. `--dock-clearance` is the room main keeps free under the content —
+   change the dock's size, change this. */
+.app-shell { --dock-clearance: calc(6.25rem + env(safe-area-inset-bottom)); }
+@media (min-width: 48rem) { .app-shell { --dock-clearance: calc(5.75rem + env(safe-area-inset-bottom)); } }
+.app-dock {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  width: calc(100% - 1.5rem);
+  max-width: max-content;
+  translate: -50% 0;
+  padding: 0.375rem;
+  border-radius: 999px;
+  background: var(--c-sidebar);
+  box-shadow: var(--sh-lg);
+  animation: dock-in var(--duration-slow) var(--ease-smooth-out) both;
+}
+@media (width < 48rem) { .app-dock { max-width: none; } }
+@media (min-width: 48rem) { .app-dock { bottom: 1rem; } }
+@keyframes dock-in { from { opacity: 0; translate: -50% 1.5rem; } }
+@media (prefers-reduced-motion: reduce) { .app-dock { animation: none; } }
+
+/* Work Logs deck (2026-10-09, from the owner's mockup): a teal-and-ink palette
+   scoped to the page, the sprint as day columns, and the open day as a card.
+   Columns grow/shrink by animating flex-grow (sum stays 1, so the swap is smooth). */
+.app-shell:has(.wl-deck) main#main { background: var(--c-wl-page); padding-top: clamp(1.5rem, 3vw, 2.5rem); }
+/* On Work Logs the dock turns ink. */
+.app-shell:has(.wl-deck) .app-dock { --c-sidebar: #0f2b2a; --c-sidebar-accent: #0f2b2a; }
+@media (min-width: 64rem) {
+  .wl-deck { height: calc(100dvh - clamp(1.5rem, 3vw, 2.5rem) - var(--dock-clearance)); min-height: 38rem; }
+  .app-shell:has(.wl-deck) main#main { padding-bottom: var(--dock-clearance); }
+}
+.app-shell:has(.wl-deck) { --c-wl-page: #f3f6f5; }
+.wl-deck {
+  --c-text: #102826;            /* 15.2:1 on white */
+  --c-text-muted: #4a5d5a;      /* 6.6:1 */
+  --c-text-subtle: #5b6d6a;     /* 5.5:1 */
+  --c-border: #d5dedb;          /* hairlines and column edges (decorative) */
+  --c-surface-2: #eef3f1;
+  --c-primary: #13706a;         /* white 5.9:1 */
+  --c-primary-hover: #0f5d58;
+  --c-primary-strong: #0f5d58;
+  --c-primary-subtle: #d6ebe6;
+  --c-accent-text: #0f5d58;     /* 7.4:1 */
+  --c-ring: #13706a;
+  --c-sidebar: #0f2b2a;         /* ink: Edit log, today's column */
+  --c-sidebar-3: #1d4240;
+  --c-sidebar-fg: #ffffff;
+  --c-warning: #8a4f0a;         /* 6.4:1 on its tint */
+  --c-warning-subtle: #fcecce;
+  --c-wl-amber: #f2b544;        /* icon discs and the today bolt only, never text */
+  --c-wl-dash: #c58a1c;         /* the dashed "no log" edge, 3:1 on the page */
+}
+.wl-title { font-size: clamp(2.75rem, 5.2vw, 4.5rem); font-weight: 700; letter-spacing: -0.045em; line-height: 0.95; }
+.wl-numeral { font-size: clamp(3.5rem, 5.5vw, 5.25rem); font-weight: 800; letter-spacing: -0.055em; line-height: 0.85; color: var(--c-primary); font-variant-numeric: tabular-nums; }
+.wl-dot { display: inline-block; width: 0.625rem; height: 0.625rem; border-radius: 999px; background: var(--c-primary); }
+.wl-legend-missing { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 999px; border: 2px dashed var(--c-wl-dash); }
+.wl-search { box-shadow: var(--sh-card); transition: box-shadow var(--duration-quick), border-color var(--duration-quick); }
+.wl-search:focus-within { border-color: var(--c-primary); box-shadow: var(--sh-card), var(--sh-focus); }
+
+/* The strip: rows below lg, columns from lg (fixed height so the card scrolls inside). */
+.wl-strip { display: flex; flex-direction: column; gap: 0.5rem; }
+.wl-col {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 1.75rem;
+  background: var(--c-surface);
+  color: var(--c-text);
+  min-height: 3.75rem;
+  transition: flex-grow 600ms var(--ease-smooth-out), border-color var(--duration-quick), box-shadow var(--duration-quick), transform var(--duration-quick) var(--ease-smooth-out);
+  animation: wl-rise var(--duration-very-slow) var(--ease-smooth-out) both;
+  animation-delay: calc(var(--i, 0) * var(--duration-stagger));
+}
+.wl-col[data-state="off"] { background: repeating-linear-gradient(135deg, var(--c-border) 0 2px, var(--c-surface-2) 2px 9px); }
+.wl-col[data-state="missing"] { background: var(--c-warning-subtle); border: 2px dashed var(--c-wl-dash); color: var(--c-warning); }
+.wl-col[data-state="today"] { background: var(--c-sidebar); border-color: var(--c-sidebar); color: var(--c-sidebar-fg); }
+.wl-col[data-state="future"] { color: var(--c-text-subtle); }
+.wl-col[data-open] { background: var(--c-surface); border: 2px solid var(--c-sidebar); color: var(--c-text); box-shadow: var(--sh-card); }
+.wl-col:not([data-open]):not([data-state="future"]):not(.wl-weekend):hover { transform: translateY(-3px); box-shadow: var(--sh-card-hover); }
+.wl-weekend { display: flex; align-items: center; justify-content: center; border: 0; background: none; min-height: 2rem; }
+.wl-weekend .wl-vert { writing-mode: horizontal-tb; }
+
+.wl-face {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; gap: 0.875rem;
+  width: 100%; padding: 0 1.25rem; border-radius: inherit;
+  text-align: left; color: inherit; cursor: pointer;
+  transition: opacity var(--duration-quick);
+}
+span.wl-face { cursor: default; }
+.wl-face:focus-visible { outline: 2px solid var(--c-ring); outline-offset: 2px; }
+.wl-face-date { display: flex; align-items: baseline; gap: 0.375rem; flex-shrink: 0; min-width: 4.25rem; }
+.wl-face-label { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-md); }
+.wl-face-label b { font-weight: 600; }
+.wl-face-mark { display: grid; place-items: center; flex-shrink: 0; }
+.wl-col[data-today] .wl-face-mark, .wl-zap { color: var(--c-wl-amber); }
+.wl-col[data-open] .wl-face { opacity: 0; pointer-events: none; }
+.wl-col[data-today] .wl-dot { background: var(--c-sidebar-fg); }
+
+.wl-card-open { position: relative; }
+
+@media (min-width: 64rem) {
+  .wl-strip { flex-direction: row; gap: 0.5rem; flex: 1; min-height: 0; }
+  .wl-col { flex: 0 0 3rem; min-height: 0; border-radius: 2rem; }
+  .wl-col[data-open] { flex-grow: 1; }
+  .wl-weekend { flex-basis: 2rem; }
+  .wl-face-label { font-size: var(--text-lg); }
+  .wl-weekend .wl-vert, .wl-face-label { writing-mode: vertical-rl; }
+  .wl-face { flex-direction: column; padding: 1.25rem 0 1.375rem; gap: 1rem; }
+  .wl-face-date { flex-direction: column; align-items: center; gap: 0.125rem; min-width: 0; }
+  .wl-face-label { flex: 0 1 auto; max-height: 100%; margin-top: auto; margin-bottom: auto; }
+  .wl-card-open { position: absolute; inset: 0; overflow-y: auto; border-radius: inherit; }
+}
+@media (min-width: 90rem) { .wl-strip { gap: 0.625rem; } .wl-col:not(.wl-weekend) { flex-basis: 3.625rem; } .wl-weekend { flex-basis: 2rem; } }
+
+/* The open card's sections arrive after the column has mostly grown. */
+.wl-reveal > * { animation: wl-fade-up var(--duration-slow) var(--ease-smooth-out) both; animation-delay: calc(180ms + var(--i, 0) * 70ms); }
+.wl-reveal .wl-numeral { animation: wl-numeral var(--duration-very-slow) var(--ease-bounce) both; animation-delay: 160ms; display: inline-block; }
+
+.wl-summary-md .worklog-prose ul { list-style: none; padding-left: 0; }
+.wl-summary-md .worklog-prose { font-size: var(--text-base); line-height: 1.6; }
+.wl-summary-md .worklog-prose li { padding-block: 0.5rem; border-bottom: 1px solid var(--c-border); margin: 0; }
+.wl-summary-md .worklog-prose li:last-child { border-bottom: 0; }
+
+@keyframes wl-rise { from { opacity: 0; transform: translateY(1.25rem); } }
+@keyframes wl-fade-up { from { opacity: 0; transform: translateY(var(--distance-medium)); filter: blur(var(--blur-small)); } }
+@keyframes wl-numeral { from { opacity: 0; transform: translateY(40%) scale(0.92); } }
+.wl-head { animation: wl-fade-up var(--duration-slow) var(--ease-smooth-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wl-col, .wl-reveal > *, .wl-reveal .wl-numeral, .wl-head { animation: none; }
+  .wl-col, .wl-face { transition: none; }
+  .wl-col:hover { transform: none !important; }
+}
+
+/* Notes bookshelf (2026-10-09): each notebook opens like a book on hover/focus —
+   the cover swings on its spine and the contents page shows behind. */
+.book-3d { perspective: 1400px; }
+.book-3d .book-cover {
+  transform-origin: left center;
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 650ms ease;
+  backface-visibility: hidden;
+}
+.book-3d .book-pages {
+  box-shadow: 3px 3px 0 -1px var(--c-surface), 3px 3px 0 0 var(--c-border), 6px 6px 0 -1px var(--c-surface), 6px 6px 0 0 var(--c-border);
+}
+.book-3d:hover .book-cover,
+.book-3d:focus-visible .book-cover { transform: rotateY(-68deg); box-shadow: var(--sh-lg); }
+@media (prefers-reduced-motion: reduce) {
+  .book-3d .book-cover { transition: none; }
+  .book-3d:hover .book-cover, .book-3d:focus-visible .book-cover { transform: none; }
+}
+
 /* Progress-rail jumps land below the sticky app header. */
 .work-log-edit-page section { scroll-margin-top: 6rem; }
 
@@ -337,15 +538,15 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
    the same components (inputs, secondary button, pills) render light-on-navy. */
 .wl-hero {
   --c-text: #ffffff;
-  --c-text-muted: #dbe5ec;
-  --c-text-subtle: #b9cad6;
-  --c-accent-text: #bfe0e2;
+  --c-text-muted: #cbd5e1;
+  --c-text-subtle: #94a3b8;
+  --c-accent-text: #bae6fd;
   --c-surface: rgba(255, 255, 255, 0.08);
   --c-surface-2: rgba(255, 255, 255, 0.16);
   --c-surface-3: rgba(255, 255, 255, 0.22);
   --c-border: rgba(255, 255, 255, 0.24);
   --c-border-strong: rgba(255, 255, 255, 0.55);
-  --c-primary: #9fd0d3;
+  --c-primary: #7dd3fc;
   --c-success: #9be3b4;   /* save-status tones, light enough for navy */
   --c-warning: #fcd88a;
   --c-danger: #ffb4b4;
@@ -370,43 +571,43 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
 /* Recessed wells on the navy hero (stat chips, upcoming sprint days): a dark
    wash reads as depth on the same navy in both themes, unlike a white tint. */
 .wl-hero .wl-inset {
-  background: rgba(8, 22, 32, 0.34);
+  background: rgba(2, 6, 23, 0.34);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .wl-hero .wl-solid {
-  --c-text: #2a2c3f;
-  --c-text-muted: #575c72;
-  --c-text-subtle: #62677d;
-  --c-accent-text: #3d57b6;
+  --c-text: #0f172a;
+  --c-text-muted: #475569;
+  --c-text-subtle: #64748b;
+  --c-accent-text: #075985;
   --c-surface: #ffffff;
-  --c-surface-2: #eef0f6;
-  --c-surface-3: #e4e6ef;
+  --c-surface-2: #f1f5f9;
+  --c-surface-3: #e2e8f0;
   --c-border: #ffffff;
   --c-border-strong: #ffffff;
-  --c-primary: #4562c9;
+  --c-primary: #0369a1;
   --c-success: #15803d;
   --c-warning: #9a560f;
   --c-danger: #c43e3e;
-  --c-ring: #a9bcf7;
+  --c-ring: #7dd3fc;
   color: var(--c-text);
 }
 .wl-hero .wl-field {
-  --c-text: #2a2c3f;
-  --c-text-muted: #575c72;
-  --c-text-subtle: #62677d;
-  --c-accent-text: #3d57b6;
+  --c-text: #0f172a;
+  --c-text-muted: #475569;
+  --c-text-subtle: #64748b;
+  --c-accent-text: #075985;
   --c-surface: #ffffff;
-  --c-primary: #4562c9;
+  --c-primary: #0369a1;
   background: #ffffff;
   border: 1px solid #ffffff;
   border-radius: 0.625rem;
-  box-shadow: inset 0 1px 2px rgba(42, 44, 63, 0.18);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.18);
   transition: box-shadow 150ms ease, border-color 150ms ease;
 }
-.wl-hero .wl-field:hover { border-color: #a9bcf7; }
+.wl-hero .wl-field:hover { border-color: #7dd3fc; }
 .wl-hero .wl-field:focus-within {
-  border-color: #4562c9;
-  box-shadow: 0 0 0 3px rgba(169, 188, 247, 0.75);
+  border-color: #0369a1;
+  box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.75);
 }
 /* The field's own teal ring is the focus indicator; drop the inner input's
    global outline, which rendered as a white box inside the field. */
@@ -420,13 +621,6 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
 /* Slim, palette-coloured scrollbar for inner scroll areas (ticket history). */
 .wl-scroll { scrollbar-width: thin; scrollbar-color: var(--c-border-strong) transparent; overscroll-behavior: contain; }
 .wl-scroll:focus-visible { outline-offset: -2px; }
-/* Tickets page fits the viewport on desktop: the list and the detail panel
-   scroll inside themselves, the page never does. Height = screen − nav (4rem
-   + 1px) − main's top padding − the smaller bottom padding set here. */
-@media (min-width: 1024px) {
-  .app-shell:has(.tickets-board) main#main { padding-bottom: 1.25rem; }
-  .tickets-board { height: calc(100dvh - 4rem - 1px - clamp(1rem, 2vw, 1.5rem) - 1.25rem); min-height: 34rem; }
-}
 .work-log-detail-page aside .worklog-prose { font-size: var(--text-sm); line-height: 1.55; }
 
 /* Work-log Markdown fields stay deliberately smaller than the Notes editor.
@@ -514,8 +708,8 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
 .app-shell main textarea,
 .app-shell main select { font-family: inherit; }
 /* Outer page <main> only — a nested <main> must not inherit this spacing. */
-.app-shell main#main { padding-top: clamp(1rem, 2vw, 1.5rem); padding-bottom: clamp(3rem, 6vw, 6rem); }
-.app-shell #app-nav a:focus-visible { outline: 2px solid var(--c-ring); outline-offset: 2px; }
+.app-shell main#main { padding-top: clamp(1rem, 2vw, 1.5rem); padding-bottom: calc(var(--dock-clearance) + clamp(1rem, 3vw, 2rem)); }
+.app-shell :is(.app-account, #app-dock) :is(a, button):focus-visible { outline: 2px solid var(--c-ring); outline-offset: 2px; }
 .app-shell [id] { scroll-margin-top: calc(var(--spacing) * 24); }
 
 /* ============================ RAW TOKENS — DARK =========================== */
@@ -655,6 +849,7 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
   --color-warning: var(--c-warning);
   --color-warning-fg: var(--c-warning-fg);
   --color-warning-subtle: var(--c-warning-subtle);
+  --color-wl-amber: var(--c-wl-amber);
   --color-info: var(--c-info);
   --color-info-fg: var(--c-info-fg);
   --color-info-subtle: var(--c-info-subtle);
@@ -819,9 +1014,10 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
 /* ============================== BASE LAYER ================================ */
 @layer base {
   html {
-    /* Keep anchor targets below the sticky app navigation and preserve
-       keyboard focus visibility (WCAG 2.2 AA 2.4.11). */
-    scroll-padding-top: calc(var(--spacing) * 24);
+    /* No top bar since 2026-10-09 (the nav is a bottom dock): a little top room,
+       and bottom room so focused fields clear the dock (WCAG 2.2 AA 2.4.11). */
+    scroll-padding-top: calc(var(--spacing) * 6);
+    scroll-padding-bottom: calc(var(--spacing) * 26);
   }
 
   body {
@@ -1446,18 +1642,22 @@ html:not(.dark) body:has(.app-shell) { --c-bg: #f3f5f9; }
    active underline (no fill behind the active tab) and a hairline border. The chrome tokens are re-pointed only inside the
    header, so ink primary buttons elsewhere are unchanged. Contrast on white: fg 13.7:1,
    muted 6.6:1, accent 5.9:1. */
-.app-shell .app-header {
-  --c-sidebar: #ffffff;
-  --c-sidebar-2: #f3f5f9;        /* hover — homepage page colour */
-  --c-sidebar-3: #ebedf2;        /* pressed */
-  --c-sidebar-fg: #2a2c3f;       /* ink */
-  --c-sidebar-muted: #575c72;    /* muted — idle section labels */
-  --c-sidebar-subtle: #b9bccb;   /* hover underline, menu button edge */
-  --c-sidebar-border: #dcdfe8;
-  --c-sidebar-accent: #4562c9;   /* blue — active underline + icon */
-  --c-sidebar-accent-bg: transparent; /* no tint behind the active tab (user decision) */
+.app-shell .app-dock,
+.app-shell .app-account,
+.app-shell .wl-band {
+  /* Slate & Sky (2026-10-08): dark slate bar, the current section is a white pill.
+     The Work Logs band shares these exact tokens so it reads as part of the nav. */
+  --c-sidebar: #1e293b;
+  --c-sidebar-2: rgba(255, 255, 255, 0.08);   /* hover */
+  --c-sidebar-3: rgba(255, 255, 255, 0.14);   /* pressed */
+  --c-sidebar-fg: #ffffff;
+  --c-sidebar-muted: #cbd5e1;    /* idle labels, 11.9:1 on slate */
+  --c-sidebar-subtle: #64748b;   /* menu button edge */
+  --c-sidebar-border: rgba(255, 255, 255, 0.14);
+  --c-sidebar-accent: #1e293b;   /* text inside the active pill */
+  --c-sidebar-accent-bg: #ffffff; /* the active pill */
   background: var(--c-sidebar);
-  border-bottom-color: var(--c-border);
+  border-bottom-color: var(--c-sidebar);
 }
 .app-shell #app-nav { background: transparent; }
 
@@ -1539,17 +1739,17 @@ dialog.t-modal[open]::backdrop {
    kept; green/cyan/violet/teal resolve to blue, indigo to deep blue (no purple — user decision).
    ========================================================================== */
 .app-shell {
-  --c-ic-blue: #4562c9;
-  --c-ic-violet: #4562c9;
+  --c-ic-blue: #0369a1;
+  --c-ic-violet: #0369a1;
   --c-ic-amber: #9a560f;
-  --c-ic-green: #4562c9;
+  --c-ic-green: #0369a1;
   --c-ic-red: #c43e3e;
   --c-ic-orange: #b8661a;
-  --c-ic-cyan: #4562c9;
-  --c-ic-indigo: #3a52a8;
+  --c-ic-cyan: #0369a1;
+  --c-ic-indigo: #075985;
   --c-ic-pink: #b8395f;
-  --c-ic-teal: #4562c9;
-  --c-ic-slate: #575c72;
+  --c-ic-teal: #0369a1;
+  --c-ic-slate: #475569;
 }
 .app-shell svg.lucide-calendar-days,
 .app-shell svg.lucide-calendar-plus,
@@ -1701,4 +1901,14 @@ dialog.t-modal[open]::backdrop {
 }
 @media (prefers-reduced-motion: reduce) {
   .note-crumb-in { animation: none; }
+}
+
+/* The dock and the Work Logs deck are monochrome (owner's mockup): icons take the
+   text colour unless they carry their own text-* class. Beats the per-icon map above. */
+.app-shell :is(.wl-deck, .app-dock) svg.lucide:not([class*="text-"]) { color: currentColor; }
+/* Phone dock: six labels in ~57px each. The desktop 2xs value (11px), tightened —
+   the phone type scale would otherwise truncate "Resources" / "Favourites". */
+@media (width < 48rem) {
+  .app-dock { padding: 0.25rem; }
+  .app-dock-link { font-size: 0.6875rem; letter-spacing: -0.01em; }
 }

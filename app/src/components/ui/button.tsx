@@ -34,8 +34,8 @@ export const buttonVariants = cva(
         // `primary-strong` is the text-safe teal (5.3:1 on white); `--primary`
         // itself is reserved for large text and decorative fills.
         primary: cn(
-          "bg-sidebar text-sidebar-fg shadow-button",
-          "hover:bg-sidebar-2 active:bg-sidebar-3 active:shadow-none",
+          "bg-primary text-primary-fg shadow-button",
+          "hover:bg-primary-hover active:bg-primary-active active:shadow-none",
         ),
         subtle: cn(
           "bg-primary-subtle text-accent-text",

@@ -214,6 +214,45 @@ export async function listTodosAroundDay(userId: string, day: Date) {
   });
 }
 
+/**
+ * Every Tracker entry that did something within [from, to): created, finished,
+ * or written to (updates in range are included), plus open to-dos due by `to`
+ * (so a day can show what was overdue on it). Work Logs groups them by day.
+ */
+export async function listTrackerForRange(userId: string, from: Date, to: Date) {
+  return prisma.followUp.findMany({
+    where: {
+      userId,
+      OR: [
+        { createdAt: { gte: from, lt: to } },
+        { completedAt: { gte: from, lt: to } },
+        { updates: { some: { occurredAt: { gte: from, lt: to } } } },
+        { kind: EntryKind.Task, status: FollowUpStatus.Open, dueDate: { lt: to } },
+      ],
+    },
+    orderBy: [{ pinned: "desc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      kind: true,
+      person: true,
+      subject: true,
+      ticketKey: true,
+      status: true,
+      pinned: true,
+      tags: true,
+      dueDate: true,
+      completedAt: true,
+      createdAt: true,
+      updates: {
+        where: { occurredAt: { gte: from, lt: to } },
+        orderBy: { occurredAt: "asc" },
+        select: { id: true, note: true, fromThem: true, occurredAt: true },
+      },
+    },
+    take: 300,
+  });
+}
+
 export async function rescheduleFollowUp(
   userId: string,
   followUpId: string,

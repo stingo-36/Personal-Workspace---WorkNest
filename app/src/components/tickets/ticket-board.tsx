@@ -8,7 +8,6 @@ import { useEffect, useMemo, useState } from "react";
 import { appendTicketHistoryEntry, deleteTicketHistoryEntry, getTicket } from "@/actions/tickets";
 import { cn } from "@/components/cn";
 import { MarkdownContent, MarkdownEditor } from "@/components/work-log/markdown-editor";
-import { TicketId } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -70,38 +69,60 @@ export function TicketBoard({ initialTickets, loadError, daysOff = [] }: { initi
     setTickets((current) => current.map((ticket) => ticket.id === ticketId ? { ...ticket, ...patch } : ticket));
   }
 
+  const counts = useMemo(() => {
+    const next = Object.fromEntries(TICKET_STATUS_ORDER.map((option) => [option, 0])) as Record<WorkflowStatus, number>;
+    for (const ticket of tickets) next[ticket.status] += 1;
+    return next;
+  }, [tickets]);
+
+  function select(ticketId: string) {
+    setSelectedId(ticketId);
+    // Below xl the drawer sits under the table — bring it into view.
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      requestAnimationFrame(() => document.getElementById("ticket-drawer")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+  }
+
+
   return (
-    <div className="tickets-board flex w-full min-w-0 flex-col gap-6">
-      <header className="motion-page-enter flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-semibold tracking-[-0.03em] text-text lg:text-4xl">Tickets</h1>
-          <p className="mt-2 max-w-[62ch] text-base leading-relaxed text-text-muted">
-            Keep each ticket current while preserving every update as a readable timeline.
-          </p>
+    // Redesigned 2026-10-09 to match Work Logs: a band joined to the nav, then the
+    // ticket list beside the open ticket; from lg the page fits the screen.
+    <div className="wl-fit flex w-full min-w-0 flex-col gap-5">
+      <section aria-labelledby="tickets-title" className="wl-band shrink-0 rounded-b-[2rem] bg-sidebar text-sidebar-fg">
+        <div className="mx-auto grid w-full max-w-[85rem] gap-5 px-4 pt-5 pb-6 md:px-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:px-8">
+          <div className="min-w-0">
+            <p className="text-sm text-sidebar-muted">{tickets.length} {tickets.length === 1 ? "ticket" : "tickets"} · your own key scheme</p>
+            <h1 id="tickets-title" className="mt-1 text-3xl font-semibold tracking-[-0.03em]">Tickets</h1>
+            {tickets.length ? (
+              <>
+                <div className="mt-3.5 flex h-2.5 w-full max-w-md gap-1 overflow-hidden rounded-full" aria-hidden="true">
+                  {TICKET_STATUS_ORDER.map((option) => counts[option] ? <span key={option} className={cn("rounded-full", TICKET_STATUS_DOT[option])} style={{ flex: counts[option] }} /> : null)}
+                </div>
+                <ul className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-sidebar-muted" aria-label="Tickets by status">
+                  {TICKET_STATUS_ORDER.map((option) => counts[option] ? (
+                    <li key={option}><b className="mr-1 text-lg font-semibold text-sidebar-fg tabular-nums">{counts[option]}</b>{TICKET_STATUS_LABELS[option].toLowerCase()}</li>
+                  ) : null)}
+                </ul>
+              </>
+            ) : null}
+          </div>
+          <div role="search" className="flex flex-wrap items-center gap-2 rounded-[1.75rem] border border-sidebar-border p-1.5">
+            <label htmlFor="ticket-search" className="sr-only">Search tickets</label>
+            <Input id="ticket-search" tone="band" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search key, title, project" startIcon={<Search />} className="min-w-0 flex-1 basis-56 lg:w-64 lg:flex-none" />
+            <label htmlFor="ticket-status-filter" className="sr-only">Filter by status</label>
+            <Select id="ticket-status-filter" tone="band" value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)} className="w-48">
+              <option value="All">All statuses</option>
+              {TICKET_STATUS_ORDER.map((option) => <option key={option} value={option}>{TICKET_STATUS_LABELS[option]}</option>)}
+            </Select>
+          </div>
         </div>
-        <span className="inline-flex min-h-10 shrink-0 items-center gap-2 self-start rounded-full border border-border bg-surface px-4 text-sm font-semibold text-text-muted">
-          <TicketIcon className="size-4 text-accent-text" aria-hidden="true" />
-          {tickets.length} {tickets.length === 1 ? "ticket" : "tickets"}
-        </span>
-      </header>
+      </section>
 
       {loadError ? (
         <div role="alert" className="rounded-xl border border-danger bg-danger-subtle p-4 text-sm font-medium text-danger">
           Tickets could not be loaded. {loadError}
         </div>
       ) : null}
-
-      <section aria-label="Ticket filters" className="grid gap-3 border-y border-border py-4 md:grid-cols-[minmax(0,1fr)_15rem]">
-        <Field label="Search tickets" htmlFor="ticket-search">
-          <Input id="ticket-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ticket ID, title or project" startIcon={<Search />} />
-        </Field>
-        <Field label="Filter by status" htmlFor="ticket-status-filter">
-          <Select id="ticket-status-filter" value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)} className="h-10">
-            <option value="All">All statuses</option>
-            {TICKET_STATUS_ORDER.map((option) => <option key={option} value={option}>{TICKET_STATUS_LABELS[option]}</option>)}
-          </Select>
-        </Field>
-      </section>
 
       {tickets.length === 0 && !loadError ? (
         <EmptyState
@@ -118,75 +139,43 @@ export function TicketBoard({ initialTickets, loadError, daysOff = [] }: { initi
           action={<Button variant="secondary" onClick={() => { setQuery(""); setStatus("All"); }}>Clear filters</Button>}
         />
       ) : (
-        <>
-          <div className="lg:hidden">
-            <Field label="Selected ticket" htmlFor="mobile-ticket-picker">
-              <Select id="mobile-ticket-picker" value={selectedTicket?.id ?? ""} onChange={(event) => setSelectedId(event.target.value)} className="h-11">
-                <option value="" disabled>Choose a ticket</option>
-                {visibleTickets.map((ticket) => <option key={ticket.id} value={ticket.id}>{ticket.ticketId} — {ticket.title}</option>)}
-              </Select>
-            </Field>
-          </div>
+        <div className="grid min-w-0 items-start gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch">
+          {/* The list: one row per ticket, like the Work Logs day list. */}
+          <nav aria-label="Ticket list" className="wl-scroll overflow-hidden rounded-2xl border border-border bg-surface lg:h-full lg:overflow-y-auto">
+            <p className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 text-sm font-semibold text-text">
+              {status === "All" ? "All tickets" : TICKET_STATUS_LABELS[status]}
+              <span className="ml-2 font-normal text-text-subtle">{visibleTickets.length}</span>
+            </p>
+            <ul>
+              {visibleTickets.map((ticket) => {
+                const selected = ticket.id === selectedTicket?.id;
+                return (
+                  <li key={ticket.id} className="border-b border-border last:border-b-0">
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => select(ticket.id)}
+                      className={cn("flex w-full cursor-pointer flex-col gap-1.5 px-4 py-3 text-left transition-colors duration-150", selected ? "bg-primary-subtle" : "hover:bg-surface-2")}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="rounded-md bg-sidebar px-2 py-0.5 font-mono text-xs font-semibold text-sidebar-fg">{ticket.ticketId}</span>
+                        <span className="ml-auto"><TicketStatusBadge status={ticket.status} /></span>
+                      </span>
+                      <span className="line-clamp-2 text-sm font-semibold text-text">{ticket.title}</span>
+                      <span className="text-xs text-text-subtle">{ticket.projectName ?? "No project"} · {ticket.workLogCount} {ticket.workLogCount === 1 ? "log" : "logs"}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
-          <div className="grid min-w-0 items-start gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-[19rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:items-stretch lg:gap-6">
-            <aside aria-label="Ticket list" className="hidden min-h-0 overflow-hidden rounded-2xl border border-border bg-card lg:flex lg:flex-col">
-              {/* Navy header band — the page's dark anchor, matching the open ticket's header. */}
-              <div className="flex items-center justify-between bg-sidebar px-4 py-3 text-sidebar-fg">
-                <p className="text-sm font-semibold">{status === "All" ? "All tickets" : TICKET_STATUS_LABELS[status]}</p>
-                <span className="rounded-full bg-sidebar-accent-bg px-2 py-0.5 text-xs font-semibold tabular-nums">{visibleTickets.length} shown</span>
-              </div>
-              <div data-reveal-stagger className="wl-scroll min-h-0 flex-1 overflow-y-auto p-2">
-                {visibleTickets.map((ticket) => (
-                  <TicketListItem key={ticket.id} ticket={ticket} selected={ticket.id === selectedTicket?.id} onSelect={() => setSelectedId(ticket.id)} />
-                ))}
-              </div>
-            </aside>
-
-            {selectedTicket ? (
-              <TicketDetailPanel key={selectedTicket.id} ticket={selectedTicket} daysOff={daysOff} onChange={replaceTicket} />
-            ) : (
-              <div className="hidden min-h-72 items-center justify-center rounded-2xl border border-border bg-card lg:flex lg:h-full">
-                <EmptyState
-                  className="border-0 bg-transparent shadow-none"
-                  icon={TicketIcon}
-                  title="Select a ticket"
-                  description="Choose a ticket from the list to view its details and history."
-                />
-              </div>
-            )}
+          <div id="ticket-drawer" className="order-first min-w-0 scroll-mt-24 lg:order-none lg:h-full lg:min-h-0">
+            {selectedTicket ? <TicketDetailPanel key={selectedTicket.id} ticket={selectedTicket} daysOff={daysOff} onChange={replaceTicket} /> : null}
           </div>
-        </>
+        </div>
       )}
     </div>
-  );
-}
-
-function TicketListItem({ ticket, selected, onSelect }: { ticket: TicketBoardItem; selected: boolean; onSelect: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        "group mb-1 flex w-full cursor-pointer flex-col gap-2 rounded-xl border px-3 py-3 text-left transition-colors duration-150 last:mb-0",
-        selected ? "border-sidebar border-l-4 bg-primary-subtle" : "border-transparent hover:border-border hover:bg-surface",
-      )}
-    >
-      <div className="flex w-full items-center justify-between gap-2">
-        <TicketId>{ticket.ticketId}</TicketId>
-        <TicketStatusBadge status={ticket.status} />
-      </div>
-      <span className="line-clamp-2 text-sm font-medium leading-5 text-text">{ticket.title}</span>
-      <div className="flex w-full items-center justify-between gap-2">
-        {ticket.projectName ? (
-          <span className="inline-flex min-w-0 items-center gap-1 text-xs font-medium text-accent-text">
-            <Building2 className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">{ticket.projectName}</span>
-          </span>
-        ) : <span className="text-xs text-text-subtle">No project</span>}
-        <span className="shrink-0 text-xs text-text-subtle tabular-nums">{ticket.workLogCount} {ticket.workLogCount === 1 ? "log" : "logs"}</span>
-      </div>
-    </button>
   );
 }
 
@@ -290,19 +279,18 @@ function TicketDetailPanel({ ticket, daysOff, onChange }: {
 
   return (
     <article aria-labelledby={`ticket-heading-${ticket.id}`} className="wl-scroll min-w-0 overflow-hidden rounded-2xl border border-border bg-card lg:h-full lg:overflow-y-auto">
-      {/* Navy header: the ticket you're looking at is the darkest thing on the page. */}
-      <header className="bg-sidebar px-5 py-5 text-sidebar-fg md:px-6">
+      {/* White header like the Work Logs day view; the slate key chip carries the nav colour. */}
+      <header className="border-b border-border px-5 py-5 md:px-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <TicketId className="text-sidebar-fg">{ticket.ticketId}</TicketId>
-              {/* A ring keeps the navy "Released" badge visible on the navy band. */}
-              <TicketStatusBadge status={ticket.status} className="ring-1 ring-sidebar-subtle" />
+              <span className="rounded-md bg-sidebar px-2 py-0.5 font-mono text-sm font-semibold text-sidebar-fg">{ticket.ticketId}</span>
+              <TicketStatusBadge status={ticket.status} />
             </div>
-            <h2 id={`ticket-heading-${ticket.id}`} className="mt-2 text-2xl font-semibold tracking-tight text-balance">{ticket.title}</h2>
-            {ticket.projectName ? <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-sidebar-muted"><Building2 className="size-4" aria-hidden="true" />{ticket.projectName}</p> : null}
+            <h2 id={`ticket-heading-${ticket.id}`} className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-balance text-text">{ticket.title}</h2>
+            {ticket.projectName ? <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-text-muted"><Building2 className="size-4" aria-hidden="true" />{ticket.projectName}</p> : null}
           </div>
-          <div className="shrink-0 text-sm text-sidebar-muted md:text-right">
+          <div className="shrink-0 text-sm text-text-subtle md:text-right">
             <p>{ticket.workLogCount} {ticket.workLogCount === 1 ? "work log" : "work logs"}</p>
             <time dateTime={ticket.updatedAt}>Updated {formatTicketDate(ticket.updatedAt)}</time>
           </div>
@@ -492,7 +480,7 @@ function ticketJourney(ticket: TicketBoardItem, detail: TicketDetail, daysOff: S
 function TicketJourney({ journey }: { journey: Journey }) {
   const reachedIndex = journey.stages.reduce((last, stage, index) => (stage.date ? index : last), 0);
   return (
-    <section aria-label="Ticket timeline" className="mx-5 mb-1 mt-4 rounded-xl border border-border bg-surface p-4 md:mx-6">
+    <section aria-label="Ticket timeline" className="mx-5 mb-1 mt-4 rounded-xl border border-border p-4 md:mx-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-text"><CalendarDays className="size-4 text-accent-text" aria-hidden="true" />Ticket timeline</h3>
         <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", journey.done ? "bg-status-completed-bg text-status-completed-fg ring-1 ring-inset ring-status-completed/50" : "bg-status-progress-bg text-status-progress-fg ring-1 ring-inset ring-status-progress/40")}>

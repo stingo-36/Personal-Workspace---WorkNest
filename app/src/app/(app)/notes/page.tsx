@@ -2,7 +2,7 @@ import { FileText, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { NoteLibrary } from "@/components/notes/NoteLibrary";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageBand, bandButton } from "@/components/shell/page-band";
 import { buttonVariants } from "@/components/ui/button";
 import { isLightColor, noteAccent } from "@/lib/note-colors";
 import { listNotes } from "@/lib/note-store";
@@ -10,7 +10,6 @@ import { requireUserId } from "@/lib/session";
 
 export const metadata = { title: "Notes" };
 
-const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
 
 export default async function NotesPage() {
   const userId = await requireUserId();
@@ -27,21 +26,17 @@ export default async function NotesPage() {
   );
 
   return (
-    <div className="flex min-w-0 flex-col">
-      <PageHeader
+    <div className="flex min-w-0 flex-col gap-6">
+      <PageBand
         title="Notes"
-        description={
-          notes.length ? (
-            <>
-              <span className="font-semibold text-text tabular-nums">{plural(notes.length, "notebook")}</span>
-              {" · "}{plural(sectionCount, "section")} · {plural(pageCount, "page")}
-              {starred ? <> · {starred} starred</> : null}
-            </>
-          ) : (
-            "A notebook per subject: sections inside a note, pages inside a section."
-          )
-        }
-        action={notes.length ? newNote : null}
+        eyebrow={notes.length ? "Your notebooks — hover a book to peek inside" : "A notebook per subject: sections inside a note, pages inside a section."}
+        stats={notes.length ? [
+          { value: notes.length, label: notes.length === 1 ? "notebook" : "notebooks" },
+          { value: sectionCount, label: sectionCount === 1 ? "section" : "sections" },
+          { value: pageCount, label: pageCount === 1 ? "page" : "pages" },
+          { value: starred, label: "starred" },
+        ] : undefined}
+        actions={notes.length ? <Link href="/notes/new" className={bandButton}><Plus aria-hidden="true" />New note</Link> : null}
       />
 
       {notes.length === 0 ? (
@@ -67,6 +62,8 @@ export default async function NotesPage() {
               iconLibrary: note.iconLibrary,
               // Pale brand colours (JS yellow) are darkened so the bare icon stays legible on white.
               iconColor: isLightColor(accent) ? `color-mix(in srgb, ${accent} 60%, var(--c-text))` : accent,
+              coverColor: accent,
+              coverInk: isLightColor(accent) ? "var(--c-text)" : "var(--c-text-inverse)",
               favorite: note.favorite,
               sectionTitles: note.sectionTitles,
               pageCount: note.pageCount,

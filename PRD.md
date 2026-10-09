@@ -4,7 +4,7 @@
 > changes scope, or is retired, update the matching section here (see
 > `AGENTS.md → Keeping the docs current`).
 >
-> Last synced with the codebase: **2026-10-07**
+> Last synced with the codebase: **2026-10-09**
 
 ---
 
@@ -58,14 +58,18 @@ placeholder page) · **Retired** (redirects).
 | Notes | `/notes`, `/notes/new`, `/notes/[id]`, `/notes/[id]/edit` | Live | Notebooks: note → sections → pages — see §5.4. |
 | Resources | `/resources` | Live | Typed personal library — see §5.5. |
 | Favourites | `/favourites` | Live | Everything starred in one place — see §5.6. |
+| Quick log | dialog (nav button, Work Logs header) | Live | Paste rough text → AI draft → review → apply, for a work log, to-dos or follow-ups — see §5.10. |
 | Profile | `/profile` (account menu) | Live | Name, sprint calendar, tickets on/off, AI summary key — see §5.7. |
 | Achievements | `/achievements` (account menu) | Live | Certifications/courses/awards timeline with certificates — see §5.8. |
 | Reports | `/reports` (account menu) | Live | "5-15 Report" per sprint, ready to paste into a doc — see §5.9. |
 | Dashboard | `/dashboard` | **Retired 2026-09-25** | Redirects to `/tracker`. |
 | Tasks, Links, Settings | `/tasks`, `/links`, `/settings` | Coming soon | Shared `ComingSoonPage`. `Task`/`Link` tables and actions exist but have no UI. |
 
-Primary nav (in order): Work Logs · Tickets (only if enabled) · Tracker · Notes ·
-Resources · Favourites. Account menu: Profile & settings, Reports, Achievements, Log out.
+Primary nav (2026-10-09): a **floating dock at the bottom** of every screen — Work Logs ·
+Tickets (only if enabled) · Tracker · Notes · Resources · Favourites, then the account
+avatar (Profile & settings, Reports, Achievements, Log out; opens upwards). There is no top
+bar; on phones the avatar floats top-right and dock labels sit under the icons. Quick log
+lives on the Work Logs page.
 
 ## 5. Features in detail
 
@@ -79,12 +83,25 @@ update.*
 - **Day type:** `Work`, `Holiday` or `Leave`. Holiday/Leave days account for the day
   without meetings or ticket work; their default titles are "Holiday" / "Leave"
   (a work day defaults to "Daily Work Log"). Auto-generated titles are hidden in the UI.
-- **Listing (`/work-logs`):** grouped by **sprint** (from the user's Profile sprint
-  calendar), newest first, with gaps kept visible so the schedule stays truthful.
-  Weekends excluded. Days off render with a hatched tile. A "create day" tile opens a
-  log for any date; an existing log tile opens its read-only timeline.
-- **Editor (`/work-logs/[id]/edit`):** a navy hero header (title, day type, save
-  status, prev/next log arrows), then sections:
+- **Listing (`/work-logs`, deck redesign 2026-10-09):** the **current sprint only**. An
+  eyebrow (sprint dates · day N of M), a large **Work Logs** title, a **Jump to a day or
+  ticket** search (⌘K; matches this sprint's dates, titles and ticket keys/titles, and opens
+  the picked day) and a legend. Below: the **sprint deck** — one column per weekday (logged · day off hatched · no log amber dashed with + ·
+  today ink · upcoming / sprint ends), a *Weekend* spacer between weeks; clicking a column
+  grows it into the **day card** (animated): big date, status chip, View full log / Edit log,
+  title (split on `|`), then four sections — **Summary** (AI summary if generated, else one
+  status-marked row per ticket update; shown only for a logged day — a day with no log
+  offers Start log / Mark holiday / Mark leave on the right of the header instead), and that day's Tracker **To-do list** (overdue, due that day, created that day, done — each a tinted card),
+  **Follow-ups** (entries created or written to that day: person, subject, latest note,
+  waiting / replied / closed) and **Notes** (created or added to that day), each with an
+  Open link to its Tracker tab. Summary sits on the left; of the lists that exist (in the order to-dos, follow-ups, notes), the first goes on the right, the second under Summary on the left, the third back on the right. **Empty sections are hidden** (no "No X that day" rows), so whichever lists exist move up. `?day=` keeps the open day. From lg the page fits the screen
+  above the dock (the card scrolls inside); below lg the columns become rows. Future days
+  inert. Earlier sprints aren't browsable here (the full log and Reports cover them).
+- **Editor (`/work-logs/[id]/edit`, redesigned 2026-10-08 as a document page):** an
+  action strip (prev/next log arrows, All work logs, day type, save status, View log),
+  then the log as **one white document** — large date, title field, and each section
+  as a chapter under a dark rule — with a right margin (xl+) holding an **On this page**
+  outline (jumps to sections, shows progress) and the day's to-dos. Sections:
   1. **Meetings** — every new log starts with the user's **Default meetings** list
      (Profile; built-in: *ASU Sync-up*, *Veritech Sync-up*, *Client Sync-up*).
      Additional cards can be added and removed per log.
@@ -104,20 +121,31 @@ update.*
   4. **Attachments** — upload files (≤10 MB each, ≤10 per upload) or add links.
 - **Autosave** is debounced, shows a save-status indicator, never toasts, and never
   creates duplicate rows.
-- **Detail (`/work-logs/[id]`):** read-only view with a side rail that starts with
-  that day's **To-dos**, followed by attachments, activity and ticket history (in
-  its own scroll area), plus a **Summary** card and **Copy as text** — the whole log as plain text for
-  stand-ups, chat or email.
+- **Detail (`/work-logs/[id]`, redesigned 2026-10-08):** a **dark slate details panel**
+  on the left (prev/next, big date, day type, counts — tickets / meetings / to-dos done —
+  Edit log, **Copy as text** — the whole log as plain text for stand-ups, chat or email —
+  attachments & links, activity) and a **bento of cards** on the right: the **Summary**
+  full width, Ticket work beside Ticket history, Meeting notes beside Work done, then the
+  day's **To-dos** from the Tracker.
+- **AI summary and title in the background (2026-10-09):** leaving a log's editor
+  (navigating away, closing or reloading the tab) refreshes the AI summary in the
+  background — and the **title**, while it's still the default "Daily Work Log" or was
+  written by the AI. It runs **only when the log's content changed** since the last run
+  (a fingerprint of what the AI reads), so reopening and leaving a log costs nothing. A
+  title the user types is never overwritten (clearing it hands it back to the AI). Titles
+  look like the owner's own: 1–3 pieces of work in Title Case joined by " | ".
 - **Summary (detail page):** generated **once automatically** the first time the log
-  is viewed with content in it, then only when the user clicks *Regenerate*. **AI
+  is viewed with content in it (if the background run hasn't already), and whenever the
+  user clicks *Regenerate*. **AI
   only** via **OpenRouter** (free models by default; key from Profile → Account → AI
   summaries card, else the server's `OPENROUTER_API_KEY`). **No code-built fallback:**
   with no key the card says AI isn't set up (link to Profile) and generates nothing; if
   a request fails it shows why (key rejected, rate-limited, no credit, unreachable,
   unusable reply) and keeps any saved summary. Output is **a few bullet points, no
-  headings or section labels**. The AI reads tickets (if on), noted meetings,
-  Work done, and the Tracker to-dos for that day (completed that day / overdue or not
-  done — the same split as the To-dos card, in the browser's local day). The card
+  headings or section labels**, one per item, covering everything in the log. The AI
+  reads tickets (if on), Work done, and that day's Tracker **to-dos** (done, due, overdue,
+  created), **follow-ups** and **notes** — the same as the Work Logs day card, in the
+  browser's local day. **Meetings are not sent** (owner, 2026-10-09). The card
   shows the model. Stored on the log (older code-built summaries are hidden); a note appears when the log was edited after the
   summary was generated. Generating doesn't change "Last edited".
 
@@ -125,8 +153,13 @@ update.*
 
 - Ticket keys are free text in the user's own scheme, **unique per user**, not
   globally. No Jira sync.
-- `/tickets` is a master-detail board: search/filter the list, then **explicitly**
-  select a ticket (nothing is auto-selected).
+- `/tickets` (redesigned 2026-10-09 to match Work Logs): a **slate band joined to the
+  nav** (title, a stacked bar and counts by status, search + status filter styled like
+  nav pills), then a **ticket list** (key chip, status, title, project, log count)
+  beside the **open ticket** (white header: key, status, title, project; then the
+  journey, add-update form and history). From lg the page fits the screen and each
+  side scrolls on its own; below lg the ticket comes first. The first ticket in the
+  list is open by default.
 - Edit the ticket's current **title**, **status** and **project/site** directly.
 - **Standalone updates** written on this page are `TicketHistoryEntry` rows. They can
   be deleted (with confirmation). Work-log updates (`TicketWorkUpdate`) are shown in
@@ -143,43 +176,45 @@ update.*
 
 ### 5.3 Tracker
 
-Redesigned 2026-10-01 as three simple lists, one per tab (`?view=todo|followups|notes`),
-using the full page width. To-do has a one-line add row (Enter saves); Follow-ups and
-Notes have a form card on the left (Who / Title / message / Where / Nudge on, and
-Title / Content) with the list on the right. Each tab has a search box:
+Three tabs (`?view=todo|followups|notes`), rebuilt **2026-10-09 as list + panel** to
+match Work Logs and Tickets: the slate header band holds the title, the three tabs (as
+pills with open counts) and search. Below it, a **list panel** on the left (grouped rows;
+To-do has its add row at the top — Enter saves; Follow-ups and Notes have a **New
+follow-up / New note** button) and a **detail panel** on the right. The right panel
+shows **Needs you** until an entry is opened or a new follow-up/note is being written;
+both open in the panel from `lg` and as a dialog below it. Fits the screen from `lg`:
 
 | Tab (`EntryKind`) | Is | Dated | Sections |
 |---|---|---|---|
 | **To-do** (`Task`) | something you owe — tick the circle to finish it | optional due date | Overdue → Today → Upcoming → Someday; **Completed** collapsed |
 | **Follow-ups** (`FollowUp`) | something you asked/told a person (required) | optional "nudge on" date | **They replied** (your turn) → **Waiting on them**; **Closed** collapsed |
-| **Notes** (`Note`) | something to keep and add updates to over time | never | card grid; **Archived** collapsed |
+| **Notes** (`Note`) | something to keep and add updates to over time | never | list rows (title, latest text, tags); **Archived** collapsed |
 
 - **Ideas were merged into Notes** (migration converts every Idea row to a Note).
 - Tags show a coloured icon derived from the tag (brand logo when the tag names a
   tool, e.g. `vercel`, `drupal`, `docker`).
 - **Notes have tags** (`FollowUp.tags`; lowercase, `#` stripped, spaces → dashes, ≤25).
-  Add them in the New note form or in a note's popup (saved on change). Above the
-  notes: tag chips (with counts) filter the grid; **Group by tag** shows one section
-  per tag (a note with two tags appears in both; *Untagged* last). Clicking a tag on a
-  card filters to it. Search also matches `#tag`.
-- Long titles are cut to one line (two on note cards) with the full text on hover;
-  the popup wraps them.
+  Add them in the New note form or in a note's popup (saved on change). At the top of
+  the notes list: tag chips (with counts) filter it; **Group by tag** shows one section
+  per tag (a note with two tags appears in both; *Untagged* last). Search also matches `#tag`.
+- Long titles are cut to two lines with the full text on hover; the detail panel wraps them.
 - **Follow-up state is derived, never stored:** if the newest record is *their* reply
   (`FollowUpUpdate.fromThem`) it shows under *They replied*, otherwise *Waiting on
-  them*. Row quick actions: **Got reply** (one click, logs an empty reply) and **Close**.
-  Logging a new message of yours moves it back to Waiting. Each row shows the
-  newest message body ("You: …" / "<person>: …", two lines) under the title. The add row records the
+  them*. Rows show the person, who spoke last and when, and the nudge date; replies and
+  Close are recorded from the detail panel. Logging a new message of yours moves it
+  back to Waiting. The add row records the
   first message (with channel) as the first update.
 - Any entry can be **starred as Important** (sorts first in its section; shows in
-  Favourites). Clicking an entry opens a popup: status, date (editable), Done / Close /
+  Favourites). Clicking an entry opens it in the detail panel (a dialog on phones): status, date (editable), Done / Close /
   Archive, star, delete, an add-update form (follow-ups pick "I followed up" or
   "<person> replied" + channel) and the timeline.
 - Updates are **append-only** (`note` + channel + `occurredAt`). There is no action to
   edit or delete a single update. A whole entry can be deleted.
-- The first section is **Needs you**: concrete overdue/today to-dos and follow-ups
-  with replies to answer or people due for a nudge. Items open directly; each group
-  previews up to four items and links to its full tab, and an "all caught up" state appears when empty. Overdue,
-  Today and They replied are also emphasised in their full lists; the others are quieter.
+- **Needs you** (the right panel's default; above the list below `lg`): today's date,
+  "N things need you", four counts (open to-dos, due this week, waiting on others,
+  notes), then groups — *Overdue & due today*, *They replied — your turn*, *Nudge due* —
+  of up to four rows each with an "N more in …" link to the tab. A row opens its entry
+  (switching tab); to-dos can be ticked off in place. "All caught up" when empty.
 - Tab badges count open items; a dot on Follow-ups means someone replied. "Today" is
   the browser's local day. People previously used are suggested.
 
@@ -196,12 +231,14 @@ Title / Content) with the list on the right. Each tab has a search box:
   when known).
 - Favourite notes sort to the top. Deleting moves a note to trash (`deletedAt`);
   notes can be restored.
-- **List (`/notes`, redesigned 2026-10-02 — no cards):** header line with real counts
-  (notebooks · sections · pages · starred) and *New note*; a search box (title,
-  description, section names); then a **library index** — one row per notebook
-  (starred first): bare coloured icon, title + one-line description, contents preview
-  (first 3 sections, "+N"), size (sections / pages), updated, star. Columns from lg;
-  below that a single meta line. The whole row links to the note.
+- **List (`/notes`, redesigned 2026-10-08 as a bookshelf):** header line with real
+  counts (notebooks · sections · pages · starred) and *New note*; a search box (title,
+  description, section names); then one **book cover** per notebook (starred first) in
+  the note's accent colour — spine, a fine dot texture, the note's icon large and faded as cover art, the icon badge, title, first 3 section names (+N) — with a
+  star on the cover and the description, size and updated date under it. The last
+  cover is a dashed *New notebook*. On hover/focus a book **opens** (the cover swings
+  on its spine, 3D) to show a contents page (first 7 sections); the whole book is the
+  link that opens it. Reduced motion: no animation. 2 covers per row on phones up to 5 at xl.
 - **Reading a note (`/notes/[id]`, redesigned 2026-10-02):** a documentation-style
   reader. **Everything is open** — every section and page in one continuous column
   (section opener: *Section X of N · N pages* + large title; pages numbered *2.3* with
@@ -216,7 +253,10 @@ Title / Content) with the list on the right. Each tab has a search box:
   under the bar — the scroll follows the heading frame by frame and pages it flies
   past wait to load until it lands, so there is no snap at the end (2026-10-04).
   Level-2 headings inside a page show as tinted bands, so each block of a topic
-  (e.g. Definition, Example) is easy to spot.
+  (e.g. Definition, Example) is easy to spot. Since 2026-10-08 it is a **three-column
+  docs layout** at xl (1440+): contents on the left (current section a slate pill,
+  current page sky), the reading column, and an **On this page** rail on the right
+  (the current section's pages + how far through the note you are).
 - **Editing a note:** the *At a glance* outline beside the editor is capped to the
   screen and scrolls on its own; clicking a section/page there smooth-scrolls to it.
   A page's editor mounts only when it comes near the screen (long notebooks stay
@@ -237,6 +277,9 @@ Title / Content) with the list on the right. Each tab has a search box:
   URL, type or a **tag** (`#` ignored, spaces = dashes, so "vibe coding" finds
   `vibe-coding`) — and each resource can be **favourited**, **edited**
   (pencil on every card/row → the same form, prefilled) or deleted.
+- Layout (2026-10-08): a **filter sidebar** — search, the types with counts (current
+  type sky), and **tag facets** (most-used first; a click searches `#tag`, again
+  clears) — beside the selected type's panel, its cards in a **masonry** grid.
 - In the add/edit form, **Resource type** is a searchable dropdown (type "doc" →
   Documentation) and **Tags** is a search-as-you-type chip field that suggests tags
   already used (most used first). Enter or a comma adds a new tag; tags are stored
@@ -245,7 +288,9 @@ Title / Content) with the list on the right. Each tab has a search box:
 ### 5.6 Favourites
 
 Aggregates, with jump links: favourite **notes**, favourite **resources**, and
-**Important** (pinned, open) **tracker** entries.
+**Important** (pinned, open) **tracker** entries. Laid out (2026-10-08) as a **bento**:
+a sky intro tile with jump counts, the Important items on a slate tile, then notes
+(coloured-icon tiles) and resources (commands/snippets as wide tiles with the code).
 
 ### 5.7 Profile
 
@@ -258,12 +303,14 @@ Aggregates, with jump links: favourite **notes**, favourite **resources**, and
   optional model list (empty = free Gemma, then any free model). Saves on its own, not via the bar.
   The user's key takes priority over the server's `OPENROUTER_API_KEY`; with neither,
   AI is off and no summaries or reports are generated (§5.1, §5.9). Shows a privacy note about what is sent.
-- Layout (redesigned 2026-10-01): header with identity inline; a grouped menu
-  (*Settings*: Account (with the AI summaries card), Sprint calendar, Work logs · *Dropdown lists*: Follow-up
-  channels, Resource types, Default meetings, Projects / sites · *Tags*: Note tags,
-  Resource tags). **Only the chosen section is shown** (`?section=` keeps it on
-  refresh). Account/sprint/tickets save together via a bottom bar that appears once
-  something changes; menu items with unsaved edits show a dot.
+- Layout (redesigned 2026-10-08): an identity header (avatar, name, email, sprint
+  length, tickets on/off); **one horizontal tab bar** for every section, grouped
+  (*Settings*: Account (with the AI summaries card), Sprint calendar, Work logs ·
+  *Dropdown lists*: Follow-up channels, Resource types, Default meetings, Projects /
+  sites · *Tags*: Note tags, Resource tags; scrolls sideways on phones); Account /
+  Sprint calendar / Work logs are **label-and-control rows**. **Only the chosen section
+  is shown** (`?section=` keeps it on refresh). Account/sprint/tickets save together via
+  a bottom bar that appears once something changes; tabs with unsaved edits show a dot.
 - **Dropdown lists** (save immediately; removing an option never rewrites items
   already using it):
   - *Follow-up channels* (Tracker "Where"), *Resource types*, *Default meetings* —
@@ -288,17 +335,20 @@ Aggregates, with jump links: favourite **notes**, favourite **resources**, and
   **certificate files** (PDF/image, ≤10 MB each, open inline). Add/edit in a popup —
   files picked there upload when you save; saved files can be removed. Delete asks
   for confirmation and removes the files too.
-- Layout: header line with real counts (completed · in progress · total days); a
-  **timeline grouped by year** (in-progress group first), a medal per entry on a rail
-  (md+; phones get full-width cards). Card = type / status eyebrow, title,
-  description, a facts strip (Started · Finished · Duration · Assigned by), and a
-  certificate footer row ("View certificate"). Edit/delete show on hover/focus at lg+,
-  always on touch widths.
+- Layout (redesigned 2026-10-08): a totals strip (completed · in progress · days of
+  effort), then a **timeline grouped by year** (in-progress group first, each year a
+  slate pill) with a medal per entry on a rail — **in the centre with cards alternating
+  left/right from lg**, on the left at md, full-width cards on phones. Card = type /
+  status eyebrow, title, description, a facts strip (Started · Finished · Duration ·
+  Assigned by), and a certificate footer row ("View certificate"). Edit/delete show on
+  hover/focus at lg+, always on touch widths.
 
 ### 5.9 Reports
 
-- `/reports?sprint=YYYY-MM-DD`: pick a sprint (current, plus every earlier sprint with
-  logs; each shows its log count and whether a report is saved).
+- `/reports?sprint=YYYY-MM-DD`: pick a sprint from a **row of sprint cards** (current,
+  plus every earlier sprint with logs; each shows its log count and whether a report is
+  saved). Below (2026-10-08), a "desk": a toolbar (copy buttons, Generate/Regenerate)
+  above the report rendered as a **sheet of paper**.
 - **Generate report** builds the user's **"5-15 Report"** in their doc format:
   `{Name} 5-15 Report`, `(dd-MM-yyyy to dd-MM-yyyy)`, **Completed This Week** (groups
   titled `Ticket <key> - <title>` or a topic, with full-sentence bullets) and
@@ -316,6 +366,39 @@ Aggregates, with jump links: favourite **notes**, favourite **resources**, and
   HTML with the doc's own styles (Arial 20/14/15/14/11pt, band `#e6f0fa`) plus a
   plain-text fallback, so a paste into Google Docs matches the existing reports.
 
+### 5.10 Quick log (added 2026-10-08)
+
+A dialog opened from the nav's ⚡ button (any page) or *Quick log* on the Work Logs
+header. Three steps:
+
+1. **Choose** what to create: **Work log**, **To-dos** or **Follow-ups**.
+2. **Paste** rough text (Work log also picks the day — weekdays, today or earlier).
+   ⌘/Ctrl+Enter reads it. For a work log, **Use template** (shown while the box is
+   empty) fills in headings for that day's meeting cards (or Default meetings), the
+   user's open tickets (In Progress / Sent to QA, up to 6) and Work done — the user
+   types under each; headings left blank are ignored.
+3. **Review** what was read: every row has a tick box and an inline editor, and a
+   label — *New*, *Update / Notes added*, or *Check ticket / Optional / Who?* when it
+   needs the user. **Nothing is saved until Apply.** Apply then opens the day's log
+   (work log) or the Tracker tab (to-dos / follow-ups) with a toast.
+
+How the text is read — the AI does the fuzzy part, code the exact part:
+- AI (OpenRouter, same key/models as summaries) splits the text into meetings,
+  tickets, Work done and suggested follow-ups (or to-dos / follow-ups) as JSON.
+- Code matches a written ticket key to the user's tickets: exact key, or a bare
+  number to keys ending in it (`1233` → `ASU-1233`). Several matches → *Check
+  ticket* with a picker. No match → a new ticket with that key. A ticket's status
+  only changes when the text names one ("sent to QA"); "same status" keeps it.
+- Meeting names match the day's cards / Default meetings ("asu meeting" → *ASU
+  Sync-up*); unknown names become new meeting cards. People match names already
+  used in the Tracker; channels match the user's channel list.
+- Follow-ups found in a work log are **suggestions, unticked** by default.
+- **Applying again on the same day appends** to that day's meeting notes, ticket
+  update and Work done — never a second update row.
+- To-dos are the one exception to "AI only": when AI isn't set up or fails, each
+  line becomes a to-do without a date, and the review says why. Work log and
+  follow-ups show the AI failure message and save nothing.
+
 ## 6. Non-functional requirements
 
 - **User isolation:** every query scoped by `userId` taken from the session, never
@@ -331,7 +414,7 @@ Aggregates, with jump links: favourite **notes**, favourite **resources**, and
 
 ## 7. Out of scope (don't build, don't promise)
 
-AI beyond the per-log summary; Jira / GitHub / Slack / Calendar integrations; PDF/Markdown export;
+AI beyond the per-log summary, sprint report and Quick log reading; Jira / GitHub / Slack / Calendar integrations; PDF/Markdown export;
 emailed reports; team workspaces; sharing; global search (not built yet);
 dark mode (removed).
 

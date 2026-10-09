@@ -32,12 +32,6 @@ function isWeekend(dateKey: string) {
   return day === 0 || day === 6;
 }
 
-const TITLE_PLACEHOLDER: Record<DayType, string> = {
-  Work: "What's the focus today? e.g. Catalogue migration fixes",
-  Holiday: "e.g. Diwali",
-  Leave: "e.g. Doctor's appointment",
-};
-
 export function CreateWorkLogForm({
   existingLogs = [],
   today,
@@ -48,7 +42,6 @@ export function CreateWorkLogForm({
 }) {
   const router = useRouter();
   const [date, setDate] = useState(localDateKey);
-  const [title, setTitle] = useState("");
   const [dayType, setDayType] = useState<DayType>("Work");
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
@@ -86,7 +79,7 @@ export function CreateWorkLogForm({
     }
     setError(undefined);
     startTransition(async () => {
-      const result = await openWorkLogForDate({ date, title: title.trim() || undefined, dayType });
+      const result = await openWorkLogForDate({ date, dayType });
       if (!result.ok) {
         setError(result.error.message);
         return;
@@ -94,7 +87,6 @@ export function CreateWorkLogForm({
       if (dayType !== "Work") {
         // Nothing to fill in for a day off — record it and stay on the list.
         toast.success(`${DAY_LABEL[dayType]} marked for ${date}`);
-        setTitle("");
         setDayType("Work");
         router.refresh();
         return;
@@ -126,7 +118,8 @@ export function CreateWorkLogForm({
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[11rem_minmax(0,1fr)] xl:grid-cols-[11rem_auto_minmax(0,1fr)_auto] xl:items-end">
+      {/* No title here (2026-10-08): it's set in the editor, where there's room for it. */}
+      <div className="grid gap-3 md:grid-cols-[11rem_minmax(0,1fr)] md:items-end xl:grid-cols-[11rem_minmax(0,1fr)_auto]">
         <Field label="Date" htmlFor="new-work-log-date" required>
           <Input id="new-work-log-date" type="date" max={todayKey()} value={date} aria-invalid={error ? true : undefined} aria-describedby="new-work-log-date-help" onChange={(event) => { setDate(event.target.value); setError(undefined); }} />
         </Field>
@@ -134,9 +127,6 @@ export function CreateWorkLogForm({
           <span id="new-work-log-day-type-label" className="text-sm font-semibold text-text">Day type</span>
           <DayTypeToggle name="new-work-log-day-type" labelledBy="new-work-log-day-type-label" value={dayType} onChange={setDayType} />
         </div>
-        <Field label="Title" htmlFor="new-work-log-title" className="min-w-0 md:col-span-2 xl:col-span-1">
-          <Input id="new-work-log-title" value={title} placeholder={TITLE_PLACEHOLDER[dayType]} onChange={(event) => setTitle(event.target.value)} />
-        </Field>
         <Button className="whitespace-nowrap md:col-span-2 xl:col-span-1" onClick={create} loading={pending} disabled={future || (weekend && !existingLog)}>
           {dayType !== "Work" ? `Mark ${DAY_LABEL[dayType].toLowerCase()}` : existingLog ? "Open log" : "Create log"}
           <ArrowRight aria-hidden="true" />
