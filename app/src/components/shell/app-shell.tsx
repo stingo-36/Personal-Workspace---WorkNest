@@ -1,25 +1,22 @@
 import type { ReactNode } from "react";
 
+import { QuickLogProvider } from "@/components/quick-log/quick-log";
 import { AppNav, type ShellUser } from "@/components/shell/app-nav";
 import { ScrollReveal } from "@/components/shell/scroll-reveal";
 /**
- * The authenticated frame: a floating pill nav across the top, then the
- * content well. There is no sidebar — navigation lives in the pill, matching
- * the homepage (2026-09-14).
+ * The authenticated frame: the content well, and a floating section dock at
+ * the bottom (2026-10-09 — no top bar, no sidebar; see AppNav).
  *
  * Layout contract (design.md §8):
- *   360   sections collapse into a sheet under the pill
- *   768   sections sit inside the pill
- *   1024  the date and the account name appear
+ *   360   dock: icon over label; the account floats top-right
+ *   768   dock: icon beside label, account at the dock's end
  *   1440  content capped at 1360px, the extra width becomes gutter
  */
 export function AppShell({
   user,
-  todayLabel,
   children,
 }: {
   user: ShellUser;
-  todayLabel: string;
   children: ReactNode;
 }) {
   return (
@@ -34,15 +31,18 @@ export function AppShell({
       {/* `min-w-0` so a wide table inside can scroll itself instead of
           stretching the page — design.md §8 forbids horizontal body scroll. */}
       <div className="app-shell flex min-h-dvh w-full min-w-0 flex-col overflow-x-clip bg-bg text-text">
-        <AppNav user={user} todayLabel={todayLabel} />
+        {/* Inside .app-shell so the dialog gets the workspace palette. */}
+        <QuickLogProvider ticketsEnabled={user.ticketsEnabled}>
+          <AppNav user={user} />
 
-        <main
-          id="main"
-          className="min-w-0 flex-1 overflow-x-clip px-4 py-6 md:px-5 lg:px-8"
-        >
-          <div className="mx-auto w-full max-w-[85rem]">{children}</div>
-        </main>
-        <ScrollReveal />
+          <main
+            id="main"
+            className="min-w-0 flex-1 overflow-x-clip px-4 py-6 md:px-5 lg:px-8"
+          >
+            <div className="mx-auto w-full max-w-[85rem]">{children}</div>
+          </main>
+          <ScrollReveal />
+        </QuickLogProvider>
       </div>
     </>
   );

@@ -5,8 +5,11 @@ import { DEFAULT_TITLE, type DayType } from "@/components/work-log/day-type";
 import { prisma } from "@/lib/prisma";
 import { getOrderedList } from "@/lib/user-lists";
 import { getOpenRouterConfig } from "@/lib/ai-settings";
-import { listTodosAroundDay } from "@/lib/follow-ups";
-import { type AiFailure, summarizeWithOpenRouter } from "@/lib/ai-summary";
+import { createHash } from "node:crypto";
+
+import { trackerOnDay } from "@/lib/day-tracker";
+import { listTrackerForRange } from "@/lib/follow-ups";
+import { type AiFailure, summarizeWithOpenRouter, titleWithOpenRouter } from "@/lib/ai-summary";
 import { type SummaryInput, workLogAsText, workLogHasContent } from "@/lib/worklog-summary";
 import type { Prisma } from "@/generated/prisma/client";
 import type { TicketStatus as StoredTicketStatus } from "@/generated/prisma/enums";
@@ -241,7 +244,8 @@ export async function updateWorkLogDetails(
   const result = await prisma.workLog.updateMany({
     where: { id: workLogId, userId },
     data: {
-      ...(data.title !== undefined ? { title: data.title } : {}),
+      // A title the user sets is theirs: the AI won't overwrite it again.
+      ...(data.title !== undefined ? { title: data.title, titleGenerated: false } : {}),
       ...(data.dayType !== undefined ? { dayType: data.dayType } : {}),
     },
   });
@@ -405,69 +409,91 @@ export async function saveLearningNotesRow(userId: string, workLogId: string, no
  * and due by then but not done by its end. "That day" is the user's local day,
  * so the browser's `getTimezoneOffset()` (minutes) comes in from the client.
  */
-async function todosOnDay(userId: string, date: Date, tzOffset: number) {
-  const day = formatDateKey(date);
+/**
+ * The day's Tracker entries in the user's own calendar day. `tzOffset` is the
+ * browser's `Date#getTimezoneOffset()`; the log's date is the local day.
+ */
+async function trackerForLogDay(userId: string, date: Date, tzOffset: number) {
+  const key = formatDateKey(date);
   const localDay = (at: Date) => new Date(at.getTime() - tzOffset * 60_000).toISOString().slice(0, 10);
-  const todos = await listTodosAroundDay(userId, toDateOnly(date));
-  return {
-    // Same-named entries (e.g. a re-added to-do) would read as a repeat; keep one.
-    completed: [...new Set(todos.filter((t) => t.completedAt && localDay(t.completedAt) === day).map((t) => t.subject))],
-    overdue: [
-      ...new Set(
-        todos
-          .filter((t) => t.dueDate && formatDateKey(t.dueDate) <= day && !(t.completedAt && localDay(t.completedAt) <= day))
-          .map((t) => t.subject),
-      ),
-    ],
-  };
+  // That local day as a UTC window, one day either side for the open-overdue to-dos.
+  const start = new Date(toDateOnly(date).getTime() + tzOffset * 60_000);
+  const entries = await listTrackerForRange(userId, start, new Date(start.getTime() + 86_400_000));
+  return trackerOnDay(entries, key, localDay);
 }
 
 export type WorkLogSummaryResult =
-  | { ok: true; summary: string | null; summaryGeneratedAt: Date | null; summaryModel: string | null }
+  | { ok: true; summary: string | null; summaryGeneratedAt: Date | null; summaryModel: string | null; title: string; unchanged?: boolean }
   | { ok: false; reason: AiFailure | "empty"; model?: string };
 
+/** Logs whose generation is running in this server process (a second leave-the-editor beacon is a no-op). */
+const running = new Set<string>();
+
 /**
- * Generate and store the log's summary with AI (OpenRouter). There's no non-AI
- * fallback: if AI isn't set up or fails, nothing is stored and the reason comes
- * back. Writes `updatedAt` back unchanged so a summary doesn't count as an edit
- * (that's how staleness is detected). `auto` is the one-time generate on first
- * view: it returns the current state if a summary already exists.
+ * Generate and store the log's AI summary — and its title while the title is
+ * still the default or AI-written (a title the user typed is never replaced).
+ * There's no non-AI fallback: if AI isn't set up or fails, nothing is stored and
+ * the reason comes back. `updatedAt` is written back unchanged so this doesn't
+ * count as an edit (that's how the detail page spots a stale summary).
+ *
+ * Modes:
+ *  - `manual`: the Regenerate button — always runs.
+ *  - `auto`: the detail page's first view — only when there's no summary yet.
+ *  - `background`: leaving the editor — only when the text the AI reads changed
+ *    since the last run (`aiInputHash`), so reopening and leaving costs nothing.
+ *
  * Returns null if the log isn't this user's.
  */
 export async function saveWorkLogSummaryRow(
   userId: string,
   workLogId: string,
   ticketsEnabled: boolean,
-  { auto = false, tzOffset = 0 }: { auto?: boolean; tzOffset?: number } = {},
+  { mode = "manual", tzOffset = 0 }: { mode?: "manual" | "auto" | "background"; tzOffset?: number } = {},
 ): Promise<WorkLogSummaryResult | null> {
   const log = await getWorkLogById(userId, workLogId);
   if (!log) return null;
+  const current = { ok: true as const, summary: log.summary, summaryGeneratedAt: log.summaryGeneratedAt, summaryModel: log.summaryModel, title: log.title };
   // Older code-built summaries (no model) don't count — they're replaced by AI.
-  if (auto && log.summary && log.summaryModel) {
-    return { ok: true, summary: log.summary, summaryGeneratedAt: log.summaryGeneratedAt, summaryModel: log.summaryModel };
-  }
+  if (mode === "auto" && log.summary && log.summaryModel) return current;
+
   const input: SummaryInput = {
-    todos: await todosOnDay(userId, log.date, tzOffset),
+    tracker: await trackerForLogDay(userId, log.date, tzOffset),
     dayType: log.dayType,
     learningNotes: log.learningNotes,
-    meetings: log.meetings,
     ticketUpdates: log.ticketUpdates,
-    attachmentCount: log.attachments.length,
     ticketsEnabled,
   };
   if (!workLogHasContent(input)) return { ok: false, reason: "empty" };
+  const text = workLogAsText(input);
+  const hash = createHash("sha256").update(text).digest("hex");
+  if (mode === "background" && hash === log.aiInputHash && log.summary && log.summaryModel) return { ...current, unchanged: true };
 
-  const config = await getOpenRouterConfig(userId);
-  if (!config) return { ok: false, reason: "not_configured" };
-  const ai = await summarizeWithOpenRouter(workLogAsText(input), config);
-  if (!ai.ok) return ai;
+  if (running.has(log.id)) return { ...current, unchanged: true };
+  running.add(log.id);
+  try {
+    const config = await getOpenRouterConfig(userId);
+    if (!config) return { ok: false, reason: "not_configured" };
+    const ai = await summarizeWithOpenRouter(text, config);
+    if (!ai.ok) return ai;
 
-  const next = { summary: ai.text, summaryModel: ai.model, summaryGeneratedAt: new Date() };
-  await prisma.workLog.update({
-    where: { id: log.id },
-    data: { ...next, updatedAt: log.updatedAt },
-  });
-  return { ok: true, ...next };
+    // Title: only while it's the default or the AI's own. A failed title keeps the old one.
+    const mayRetitle = log.dayType === "Work" && (log.titleGenerated || log.title === DEFAULT_TITLE.Work);
+    const titled = mayRetitle ? await titleWithOpenRouter(text, config) : null;
+
+    const next = { summary: ai.text, summaryModel: ai.model, summaryGeneratedAt: new Date() };
+    await prisma.workLog.update({
+      where: { id: log.id },
+      data: {
+        ...next,
+        aiInputHash: hash,
+        ...(titled?.ok ? { title: titled.text, titleGenerated: true } : {}),
+        updatedAt: log.updatedAt,
+      },
+    });
+    return { ok: true, ...next, title: titled?.ok ? titled.text : log.title };
+  } finally {
+    running.delete(log.id);
+  }
 }
 
 export async function addLinkAttachment(

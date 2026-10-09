@@ -14,6 +14,7 @@ import {
   setFollowUpStatusSchema,
   setFollowUpTagsSchema,
   todosForDaySchema,
+  trackerForRangeSchema,
 } from "@/lib/validation";
 
 /**
@@ -76,6 +77,14 @@ export async function listTodosForDay(input: unknown) {
   if (!parsed.ok) return parsed;
   if (!parsed.data.date) return ok([]);
   return ok(await followUps.listTodosAroundDay(userId, parsed.data.date));
+}
+
+/** Tracker entries active in a window (Work Logs' day cards). Input: { from, to } */
+export async function listTrackerForRange(input: unknown) {
+  const userId = await requireUserId();
+  const parsed = parseOrFail(trackerForRangeSchema, input);
+  if (!parsed.ok) return parsed;
+  return ok(await followUps.listTrackerForRange(userId, parsed.data.from, parsed.data.to));
 }
 
 export async function setFollowUpStatus(input: unknown) {

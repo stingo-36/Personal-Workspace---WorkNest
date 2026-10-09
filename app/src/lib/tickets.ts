@@ -532,6 +532,32 @@ export async function deleteTicket(userId: string, ticketId: string) {
   return result.count > 0;
 }
 
+/**
+ * Quick log: the user's tickets a key as written could mean. An exact key wins;
+ * a bare number ("1233") also matches keys ending in it after a separator
+ * ("ASU-1233", "WEB_1233") — newest first, so the likeliest is first.
+ */
+export async function findTicketsByKeyHint(userId: string, hint: string, take = 5) {
+  const select = { ticketId: true, title: true, status: true, projectName: true } as const;
+  const exact = await prisma.ticket.findUnique({
+    where: { userId_ticketId: { userId, ticketId: hint } },
+    select,
+  });
+  if (exact) return [normalizeTicketRecord(exact)];
+  if (!/^\d+$/.test(hint)) return [];
+  const rows = await prisma.ticket.findMany({
+    where: { userId, ticketId: { endsWith: hint } },
+    orderBy: { updatedAt: "desc" },
+    select,
+    take: 20,
+  });
+  const suffix = new RegExp(`[^0-9]${hint}$`);
+  return rows
+    .filter((row) => suffix.test(row.ticketId))
+    .slice(0, take)
+    .map((row) => normalizeTicketRecord(row));
+}
+
 /** Dashboard card: the active workflow states. */
 
 export async function listActiveTickets(userId: string, take = 10) {

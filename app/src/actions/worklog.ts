@@ -208,10 +208,10 @@ export async function generateWorkLogSummary(input: unknown) {
   const parsed = parseOrFail(generateWorkLogSummarySchema, input);
   if (!parsed.ok) return parsed;
   const { ticketsEnabled } = await getUserSettings(userId);
-  const saved = await saveWorkLogSummaryRow(userId, parsed.data.workLogId, ticketsEnabled, { auto: parsed.data.auto, tzOffset: parsed.data.tzOffset });
+  const saved = await saveWorkLogSummaryRow(userId, parsed.data.workLogId, ticketsEnabled, { mode: parsed.data.auto ? "auto" : "manual", tzOffset: parsed.data.tzOffset });
   if (!saved) return notFound("Work log not found");
   if (!saved.ok) {
-    return fail("AI_UNAVAILABLE", saved.reason === "empty" ? "Nothing to summarise yet — add tickets, meeting notes, work done or to-dos first." : aiFailureMessage({ reason: saved.reason, model: saved.model }));
+    return fail("AI_UNAVAILABLE", saved.reason === "empty" ? "Nothing to summarise yet — add tickets, work done, or to-dos, follow-ups or notes for this day first." : aiFailureMessage({ reason: saved.reason, model: saved.model }));
   }
   revalidateWorkLog(parsed.data.workLogId);
   return ok(saved);

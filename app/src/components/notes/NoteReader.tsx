@@ -148,14 +148,14 @@ export function NoteReader({
                 aria-current={current ? "true" : undefined}
                 className={cn(
                   "sticky top-0 z-10 flex min-h-10 items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-semibold transition-colors duration-150",
-                  current ? "bg-surface text-text shadow-xs ring-1 ring-border" : "bg-surface-2 text-text-muted hover:bg-surface-3 hover:text-text",
+                  current ? "bg-sidebar text-sidebar-fg" : "bg-surface text-text-muted hover:bg-surface-2 hover:text-text",
                 )}
               >
                 <span
                   aria-hidden="true"
                   className={cn(
                     "grid size-6 shrink-0 place-items-center rounded-md text-2xs font-bold tabular-nums transition-colors duration-150",
-                    current ? "bg-sidebar text-sidebar-fg" : "bg-surface text-text-muted",
+                    current ? "bg-surface text-text" : "border border-border bg-surface text-text-muted",
                   )}
                 >
                   {index + 1}
@@ -178,7 +178,7 @@ export function NoteReader({
                           className={cn(
                             "-ml-[calc(0.75rem+1px)] flex min-h-9 items-center rounded-r-md border-l-2 py-1.5 pr-2 pl-3 text-sm leading-snug transition-colors duration-150",
                             active
-                              ? "border-sidebar bg-surface font-semibold text-text"
+                              ? "border-primary bg-primary-subtle font-semibold text-accent-text"
                               : "border-transparent text-text-muted hover:border-border-strong hover:text-text",
                           )}
                         >
@@ -250,10 +250,10 @@ export function NoteReader({
   }, [sections, note.description, note.title, note.updatedLabel]);
 
   return (
-    <div style={{ "--note": accent } as CSSProperties} className="grid min-w-0 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] xl:gap-14">
+    <div style={{ "--note": accent } as CSSProperties} className="grid min-w-0 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[17rem_minmax(0,1fr)_13rem] xl:gap-12">
       {/* Chapter list — the note's identity and every section with all its topics. */}
       <aside className="hidden lg:block">
-        <div className="sticky top-[calc(4rem+1.5rem)] flex max-h-[calc(100dvh-6.5rem)] flex-col gap-4 rounded-2xl border border-border bg-surface-2 p-3">
+        <div className="sticky top-[calc(4rem+1.5rem)] flex max-h-[calc(100dvh-6.5rem)] flex-col gap-4 rounded-2xl border border-border bg-surface p-3">
           <div className="flex items-start gap-3 px-1 pt-1">
             <span aria-hidden="true" style={{ color: iconColor }} className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-surface">
               {icon}
@@ -306,7 +306,7 @@ export function NoteReader({
             <div className="hidden shrink-0 lg:block"><NoteActions note={note} compact /></div>
           </div>
           {contentsOpen ? (
-            <div id="note-contents" className="t-sheet mb-3 max-h-[60dvh] overflow-y-auto rounded-2xl border border-border bg-surface-2 p-2 shadow-md lg:hidden">
+            <div id="note-contents" className="t-sheet mb-3 max-h-[60dvh] overflow-y-auto rounded-2xl border border-border bg-surface p-2 shadow-md lg:hidden">
               {chapters}
             </div>
           ) : null}
@@ -335,6 +335,35 @@ export function NoteReader({
           pages
         )}
       </div>
+
+      {/* Right rail (xl, 2026-10-08): the pages of the section you're in, and how far through the note you are. */}
+      {activeSection ? (
+        <aside aria-label="On this page" className="hidden xl:block">
+          <div className="sticky top-[calc(4rem+5rem)] flex flex-col gap-3">
+            <p className="text-2xs font-bold tracking-[0.08em] text-text-subtle uppercase">On this page</p>
+            <ul className="flex flex-col border-l-2 border-border">
+              {activeSection.pages.map((page) => {
+                const active = pageAnchor(page.id) === activeId;
+                return (
+                  <li key={page.id}>
+                    <a
+                      href={`#${pageAnchor(page.id)}`}
+                      onClick={(event) => jumpTo(event, pageAnchor(page.id))}
+                      className={cn("-ml-0.5 block border-l-2 py-1.5 pl-3 text-sm leading-snug transition-colors duration-150", active ? "border-primary font-semibold text-text" : "border-transparent text-text-muted hover:text-text")}
+                    >
+                      {page.title}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-3" aria-hidden="true">
+              <span className="block h-full rounded-full bg-primary" style={{ width: `${((activeSectionIndex + 1) / sections.length) * 100}%` }} />
+            </div>
+            <p className="text-xs text-text-subtle tabular-nums">Section {activeSectionIndex + 1} of {sections.length} · updated {note.updatedLabel}</p>
+          </div>
+        </aside>
+      ) : null}
     </div>
   );
 }

@@ -4,7 +4,7 @@
 > (with the *why*), gotchas that cost time before, and a changelog. Newest first in
 > every section. Update rules are in `AGENTS.md` §2.
 >
-> Last synced with the codebase: **2026-10-07**
+> Last synced with the codebase: **2026-10-09**
 
 ---
 
@@ -16,7 +16,7 @@
   Typecheck, lint and build pass.
 - **Live features:** homepage, auth, Work Logs, Tickets (toggleable), Tracker (landing
   page), Notes, Resources, Favourites, Profile, Achievements, Reports (5-15), optional AI
-  summaries. Coming soon: Tasks, Links, Settings. Retired: Dashboard, `/banner`. Details in
+  summaries, Quick log. Coming soon: Tasks, Links, Settings. Retired: Dashboard, `/banner`. Details in
   `PRD.md` §4.
 - **Hosting:** prepared for Vercel Hobby (root dir `app`) + Neon Free — the owner wants
   zero cost; deploy steps are theirs to run (see `skills.md` → Deploy). Before relying on
@@ -26,6 +26,78 @@
 ## Decisions
 
 Format: **date — decision.** Why. *Rejected:* alternatives.
+
+**2026-10-09 — AI summary + title regenerate in the background when you leave the editor, only if the content changed.**
+Owner: generate the title too, in the background after closing the log, and next time
+only if something was added; the summary should cover tickets, work done, to-dos,
+follow-ups and notes, not meetings. A `sendBeacon` on unmount/`pagehide` hits a route
+handler that answers 202 and works in `after()`; `aiInputHash` (SHA-256 of the AI's input
+text) skips unchanged logs, so it costs nothing to reopen a log. The AI only retitles a
+default or AI-written title (`titleGenerated`); a typed title is the user's. *Rejected:*
+regenerating on every autosave (cost, churn); comparing `updatedAt` (misses child-row and
+Tracker changes); one JSON call for title + summary (free models break JSON more often).
+
+**2026-10-09 — Work Logs is the "sprint deck" from the owner's mockup, with its own palette.**
+The owner supplied a pixel mockup ("same to same"): day columns that open into the day,
+a quick-log bar, teal/ink colours. The palette is scoped to `.wl-deck` so the rest of the
+app stays Slate & Sky. Selection is client state (all of the sprint's logs are loaded) so
+the column grow can animate; `?day=` is mirrored with `replaceState`. Not built from the
+mockup: the bottom dock nav and ⌘K "Jump to a day or ticket" search (shell-wide; search
+doesn't exist), meeting times (no field) and "Siddharth to action" owner chips (no data).
+*Rejected:* server-rendered selection via links (no animation); `PageBand` on this page.
+
+**2026-10-09 — Navigation is a bottom dock; no top bar. Work Logs shows the current sprint
+only, and the day card is Summary · To-dos · Follow-ups · Notes.** Owner: the page didn't
+fit the screen, "remove the nav bar from top" (then the brand/account row too), current
+sprint only, and the card should show the summary plus the Tracker's three lists for that
+day. Tickets, meetings and work done moved off the card (View full log has them). The
+account menu sits at the dock's end (opens upwards); on phones it floats top-right so the
+six labels fit. *Rejected:* keeping a slim top row for brand + account (owner removed it).
+Follow-up the same day: the counts line became a "Jump to a day or ticket" search, the
+quick-log bar was removed (so Quick log currently has no button anywhere), empty card
+sections are hidden, and the card's date/actions share one row with smaller type.
+
+**2026-10-09 — No shadows or tinted boxes on the page; Tracker rebuilt as list + panel.**
+The owner rejected the Tracker (band on top of the old pill strip, underlined tabs and
+pastel kanban — three styles on one page) and asked to "remove bg box shadows and all".
+In-page shadow tokens are `none` in `.app-shell`; panels and inner boxes are white with
+`--c-border`. Floating layers (menus, toasts, dialogs) keep `--sh-md`/`--sh-lg` so they
+don't blend into the page. Tracker now follows Work Logs/Tickets: tabs as pills in the
+band, list panel left, detail panel right (Needs you by default; the entry or new-item
+form inline from `lg`, a dialog below it). Follow-up rows lost the Got reply / Close
+quick buttons (both live in the panel). *Rejected:* keeping the kanban; the horizontal
+Needs-you pill strip; removing shadows from menus/dialogs too.
+
+**2026-10-09 — The nav is sections + account only; Quick log lives in the Work Logs header.**
+Owner asked to remove the date and the Quick log button from the bar. Quick log keeps an
+entry point as a band button on Work Logs (`QuickLogButton variant="band"`). Every list
+page uses the shared slate `PageBand`; band fields are MUI (`tone="band"`).
+
+**2026-10-08 — Workspace palette is Slate & Sky; white page; visible borders; dark slate top bar.**
+The owner reviewed a redesign canvas (18 palettes) and picked Slate & Sky: chrome
+`#1e293b`, accent sky `#0369a1` (white 5.9:1), text `#0f172a`, page `#ffffff`, borders
+`#94a3b8` ("borders dark so sections are clearly visible"; no grey boxes behind
+sections). The top bar is dark slate with the current section as a white pill; primary
+buttons are the sky accent (was ink). Status hues unchanged. The page-by-page layout
+redesign (kanban Tracker, timeline Work logs, …) follows on branch
+`feat/slate-sky-redesign`. *Rejected:* Emerald and 16 other palettes; the white header
+with blue underline (2026-10-03).
+
+**2026-10-08 — Quick log: choose a type → paste → review → apply; AI drafts, code matches, nothing saved before Apply.**
+The owner wanted to paste one end-of-day dump and have the log, tickets and follow-ups
+created or updated. On free `openrouter/free` models (any free model per request) exact
+data is unreliable, so the AI only splits text into JSON; code resolves ticket keys
+(`1233` → `ASU-1233`, ambiguity → picker), meeting cards, people and channels; the user
+reviews every row. Same-day re-apply appends instead of overwriting the one
+`TicketWorkUpdate` per log. To-dos fall back to one per line when AI is unavailable
+(a deliberate, labelled exception to "AI only"). Follow-ups found in a work log are
+unticked suggestions. *Rejected:* a chatbot (multi-turn context on random free models,
+more calls, mistakes hidden in replies); letting the AI write directly; overwriting
+same-day text on re-apply.
+2026-10-08 follow-up: the first real run (free model) used the heading "For Asu meeting"
+as the notes and missed that one heading named two meetings. Fix: the prompt now
+defines headings, shows one worked example (small models copy examples better than
+rules), and a **Use template** button gives the text headings the model reads reliably.
 
 **2026-10-07 — Tracker opens with concrete work needing attention, not a count sentence.**
 The owner wanted to see what to do immediately. The first card now combines overdue/today
@@ -423,6 +495,23 @@ is done on the real rendered app.
 
 ## Gotchas
 
+- **2026-10-09 — A local DB copied from live can't use the live OpenRouter keys.** Profile keys
+  are encrypted with the deploy's `AUTH_SECRET`; after copying live → local they don't
+  decrypt with the local secret, so AI reports "not configured" locally. Set
+  `OPENROUTER_API_KEY` in `app/.env`, or re-save the key in Profile, to test AI locally.
+- **Live Neon is Postgres 18, local Docker is 16** — `pg_dump` must be ≥ the server, so dump
+  live with the `postgres:18` image (skills.md §11a). Empty migration folders (no
+  `migration.sql`) break `migrate deploy`; two such leftovers were moved out on 2026-10-09.
+- **Lucide icons ignore `currentColor` inside `.app-shell`** — the global icon-colour
+  map (`svg.lucide-star { color: amber }` etc., unlayered) beats Tailwind text
+  utilities. On a coloured fill (note covers) set `style={{ color: "inherit" }}` on the
+  icon or `[&_svg]:!text-inherit` on its wrapper, or it can vanish into the fill.
+- **`sr-only` text inside a horizontal scroller widens the page** unless the scroller
+  is `relative` — the absolutely positioned text escapes `overflow-x-auto` (Tracker's
+  Needs-you strip, 2026-10-08).
+- **A `<dialog>` rendered outside `.app-shell` gets the old teal palette** — the
+  workspace `--c-*` tokens are scoped to `.app-shell`. Mount providers that render
+  dialogs inside it (Quick log does).
 - **`grep` in this shell is `ugrep`** and an unquoted `--include=*.tsx` makes zsh abort the
   command ("no matches found") — counts silently come out 0. Quote globs or use `/usr/bin/grep`.
 - **Run `npm run typecheck` from the repo root** (or `npm --prefix app run typecheck`). Before
@@ -545,6 +634,61 @@ is done on the real rendered app.
 ## Changelog
 
 `YYYY-MM-DD — what changed — key files`
+
+- 2026-10-09 — Background AI summary + title on leaving the editor (only when content changed); summary input now tickets, work done, the day's to-dos/follow-ups/notes (no meetings); migration `worklog_ai_title` (`aiInputHash`, `titleGenerated`) — `app/api/work-logs/[workLogId]/ai-refresh/route.ts`, `lib/{worklogs,worklog-summary,ai-summary,day-tracker}.ts`, `components/work-log/work-log-editor.tsx`, `actions/worklog.ts`, `lib/validation.ts`, `app/(app)/work-logs/page.tsx`
+
+- 2026-10-09 — Pushed local work-log data to live (owner-approved): sahiltari36@gmail.com 6 Oct (title, meeting notes, ticket update) and 7 Oct (new log), tickets 25917 + 26057; one transaction of id-upserts after a live backup and a dry run; work logs now identical on both — procedure in skills.md §11b
+
+- 2026-10-09 — Work Logs: counts line → day/ticket search (`components/work-log/deck-search.tsx`), quick-log bar removed (`QuickLogBar` deleted), empty day-card sections hidden, card header on one row with tighter type — `app/(app)/work-logs/page.tsx`, `components/work-log/{sprint-deck,open-day-bar}.tsx`, `app/globals.css`
+
+- 2026-10-09 — Nav moved to a floating bottom dock (top bar removed, account menu in the dock / top-right on phones); Work Logs fits the screen, current sprint only, day card = Summary + day's Tracker to-dos / follow-ups / notes (`listTrackerForRange`) — `components/shell/{app-nav,app-shell,menu}.tsx`, `components/work-log/sprint-deck.tsx`, `app/(app)/work-logs/page.tsx`, `actions/follow-ups.ts`, `lib/follow-ups.ts`, `lib/validation.ts`, `app/globals.css`
+
+- 2026-10-09 — Work Logs rebuilt as the sprint deck (animated day columns → day card, quick-log bar, previous-sprint links); Quick log `open(kind, text)` pre-fills the paste step; `OpenDayBar` replaced by `QuickLogBar` — `app/(app)/work-logs/page.tsx`, `components/work-log/{sprint-deck,open-day-bar}.tsx`, `components/quick-log/quick-log.tsx`, `app/globals.css`, PRD §5.1
+
+- 2026-10-09 — Tracker rebuilt as band tabs + list panel + detail panel (Needs you default; entry/new form inline from lg); page shadows and tinted boxes removed app-wide (borders instead) — `components/tracker/tracker-board.tsx`, `app/globals.css`, `app/(app)/work-logs/page.tsx`, `components/tickets/ticket-board.tsx`, `components/work-log/attachments-section.tsx`, `components/reports/report-view.tsx`, `components/resources/resource-library.tsx`, `components/work-log/create-day-tile.tsx`, PRD §5.3
+
+- 2026-10-09 — Shared `PageBand` header on Tracker/Notes/Resources/Favourites/Profile/Achievements/Reports; nav date + Quick log removed; MUI band fields (`tone="band"`); Work Logs day chips (replace the segment bar) and previous sprints folded behind a toggle; card borders removed on Work Logs/Tickets — `components/shell/{page-band,app-nav,app-shell}.tsx`, `components/ui/{band-sx.ts,input.tsx,select.tsx}`, `components/quick-log/quick-log.tsx`, pages, docs
+
+- 2026-10-09 — Work Logs fits the viewport (`.wl-fit`), slate buttons, ticket/meeting cards; Tickets rebuilt to match (band + list + ticket, viewport-fit from lg; old `.tickets-board` CSS removed); Notes books open in 3D on hover (`.book-3d`) — `app/(app)/work-logs/page.tsx`, `components/tickets/ticket-board.tsx`, `components/notes/NoteLibrary.tsx`, `app/globals.css`, PRD §5.1/§5.2/§5.4
+
+- 2026-10-09 — Local DB replaced with a copy of live (6 users, 64 logs); Work Logs band now uses the nav's own tokens (one slate block, nav-style buttons), page Quick log removed, title beside the date — `app/(app)/work-logs/page.tsx`, `components/work-log/open-day-bar.tsx`, `app/globals.css`, skills.md §11a
+
+- 2026-10-09 — Work Logs page rebuilt as "Option B": header band joined to the nav (`.wl-band`, deep sky `--c-primary-active`), day list + selected-day preview via `?day=`; `OpenDayBar` / `EmptyDayActions` replace the create form and timeline here — `app/(app)/work-logs/page.tsx`, `components/work-log/open-day-bar.tsx`, `app/globals.css`, PRD §5.1
+
+- 2026-10-09 — Notebook covers get icon art (large faded icon + dot texture); Tickets table and drawer split into two separate cards — `components/notes/NoteLibrary.tsx`, `components/tickets/ticket-board.tsx`, PRD §5.2/§5.4
+
+- 2026-10-08 — Work Logs create form: removed the Title field (set in the editor instead) — `components/work-log/create-work-log-form.tsx`
+
+- 2026-10-08 — Work Logs: removed the sprint jump list; the timeline takes the full width — `app/(app)/work-logs/page.tsx`, PRD §5.1
+
+- 2026-10-08 — Reports: sprint card rail (replaces the select) and a paper-on-desk preview with one toolbar — `components/reports/report-view.tsx`, PRD §5.9
+
+- 2026-10-08 — Achievements: totals strip, year pills, centred rail with alternating cards from lg — `components/achievements/achievements-board.tsx`, PRD §5.8
+
+- 2026-10-08 — Profile redesign: identity header, horizontal grouped tab bar (was a left rail), settings rows — `components/profile/profile-form.tsx`, PRD §5.7
+
+- 2026-10-08 — Resources: light type facets, tag facets in the sidebar (search `#tag`), plain panel header, masonry cards — `components/resources/resource-library.tsx`, PRD §5.5
+
+- 2026-10-08 — Note reader: white contents panel, slate/sky active states, right "On this page" rail at xl — `components/notes/NoteReader.tsx`, PRD §5.4
+
+- 2026-10-08 — Notes list redesign: bookshelf of accent-coloured covers (replaces the library index) — `components/notes/NoteLibrary.tsx`, `app/(app)/notes/page.tsx`, PRD §5.4
+
+- 2026-10-08 — Favourites redesign: bento grid (intro tile, slate Important tile, note and resource tiles) — `app/(app)/favourites/page.tsx`, PRD §5.6
+
+- 2026-10-08 — Tickets redesign: toolbar with status stacked bar, table + detail drawer (viewport-fit from xl, was lg); list cards and mobile picker removed — `components/tickets/ticket-board.tsx`, `app/globals.css`, PRD §5.2
+
+- 2026-10-08 — Work-log detail redesign: dark details panel (`.wl-hero` tokens retinted to sky) + bento of cards — `app/(app)/work-logs/[workLogId]/page.tsx`, `app/globals.css`, PRD §5.1
+
+- 2026-10-08 — Work-log editor redesign: action strip + one-document layout (`.wl-doc` flattens section cards into ruled chapters) + right margin (On this page, to-dos); attachments moved into the document — `components/work-log/work-log-editor.tsx`, `app/globals.css`, PRD §5.1
+
+- 2026-10-08 — Work Logs listing redesign: split hero (form + slate sprint card with progress ring) and a vertical per-sprint timeline with a sprint jump list; `CreateDayTile` gains a `row` variant — `app/(app)/work-logs/page.tsx`, `components/work-log/create-day-tile.tsx`, PRD §5.1
+
+- 2026-10-08 — Tracker redesign: Needs-you pill strip, underlined tabs, search in the header, To-do kanban (4 columns), Follow-ups as 2 board columns, Notes masonry, add forms on the right — `components/tracker/tracker-board.tsx`, PRD §5.3
+
+- 2026-10-08 — Slate & Sky palette for the workspace: white page, darker borders, dark slate top bar with white-pill active section, sky primary buttons — `app/globals.css`, `components/shell/app-nav.tsx`, `components/ui/button.tsx`, docs
+
+- 2026-10-08 — Quick log: prompt explains headings + worked example; work-log **Use template** (day's meetings, open tickets, Work done); blank template sections dropped — `lib/quick-log.ts`, `actions/quick-log.ts`, `components/quick-log/quick-log.tsx`, docs
+- 2026-10-08 — Added Quick log (paste text → AI draft → review → apply) for work logs, to-dos and follow-ups, with a nav button and a Work Logs header button — `lib/quick-log.ts`, `actions/quick-log.ts`, `components/quick-log/*`, `lib/tickets.ts` (`findTicketsByKeyHint`), `lib/ai-summary.ts` (`checkReasoning`), `lib/validation.ts`, `components/shell/{app-shell,app-nav}.tsx`, docs
 
 - 2026-10-07 — Replaced Tracker's small Needs you count line with a first-class action section listing overdue/today to-dos, replies to answer and due nudges, with direct item and full-list access — `components/tracker/tracker-board.tsx`, docs
 

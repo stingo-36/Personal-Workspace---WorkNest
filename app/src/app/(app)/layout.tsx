@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { MuiProvider } from "@/components/ui/mui-provider";
@@ -26,7 +25,6 @@ export default async function AppLayout({
     <MuiProvider>
     <AppShell
       user={{ id: user.id, name: settings.name ?? user.name, email: user.email, ticketsEnabled: settings.ticketsEnabled }}
-      todayLabel={format(new Date(), "EEE, d MMM yyyy")}
     >
       {children}
     </AppShell>

@@ -15,6 +15,7 @@ export function Menu({
   trigger,
   children,
   align = "end",
+  side = "bottom",
   label,
   className,
 }: {
@@ -28,6 +29,8 @@ export function Menu({
   }) => ReactNode;
   children: ReactNode;
   align?: "start" | "end";
+  /** Which side of the trigger the panel opens on — "top" for the bottom dock. */
+  side?: "top" | "bottom";
   label: string;
   className?: string;
 }) {
@@ -85,9 +88,10 @@ export function Menu({
             }
             setOpen(false);
           }}
-          data-origin={align === "end" ? "top-right" : "top-left"}
+          data-origin={`${side === "top" ? "bottom" : "top"}-${align === "end" ? "right" : "left"}`}
           className={cn(
-            "t-dropdown absolute top-full z-50 mt-2 min-w-52 rounded-xl border border-border bg-surface p-1.5 shadow-md",
+            "t-dropdown absolute z-50 min-w-52 rounded-xl border border-border bg-surface p-1.5 shadow-md",
+            side === "top" ? "bottom-full mb-3" : "top-full mt-2",
             align === "end" ? "right-0" : "left-0",
           )}
         >

@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 
 import { createResource, deleteResource, toggleResourceFavorite, updateResource } from "@/actions/content";
 import { cn } from "@/components/cn";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageBand, bandButton } from "@/components/shell/page-band";
 import { Button } from "@/components/ui/button";
 import { Field, FormError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -128,25 +128,36 @@ export function ResourceLibrary({
     const used = [...counts.keys()].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a.localeCompare(b));
     return [...used, ...savedTags.filter((tag) => !counts.has(tag))];
   }, [resources, savedTags]);
+  // The sidebar's tag facets: tags in use, most used first.
+  const usedTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tag of resources.flatMap((resource) => resource.tags)) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 16);
+  }, [resources]);
 
   return (
     <TypeIconsProvider value={typeIcons}>
-    <div className="motion-page-reveal min-w-0">
-      <PageHeader
+    <div className="motion-page-reveal flex min-w-0 flex-col gap-6">
+      <PageBand
         title="Resources"
-        description="Keep the links, commands, apps, tools, and references you reach for while working."
-        action={
-          <Button onClick={() => setComposer({ type: active ?? typeList[0] ?? "Other" })}>
+        eyebrow="The links, commands, apps, tools and references you reach for"
+        stats={[
+          { value: resources.length, label: resources.length === 1 ? "resource" : "resources" },
+          { value: types.length, label: types.length === 1 ? "type" : "types" },
+          { value: resources.filter((resource) => resource.favorite).length, label: "starred" },
+        ]}
+        actions={
+          <button type="button" className={bandButton} onClick={() => setComposer({ type: active ?? typeList[0] ?? "Other" })}>
             <Plus aria-hidden="true" />
             Add resource
-          </Button>
+          </button>
         }
       />
 
       <FormError>{loadError}</FormError>
 
       {types.length === 0 ? (
-        <div className="wl-card mt-7 grid min-h-64 place-items-center px-5 py-12 text-center">
+        <div className="wl-card grid min-h-64 place-items-center px-5 py-12 text-center">
           <div className="max-w-sm">
             <span className="mx-auto grid size-11 place-items-center rounded-lg bg-surface-2 text-text-muted"><LibraryBig className="size-5" aria-hidden="true" /></span>
             <h2 className="mt-4 text-lg font-semibold text-text">No resources yet</h2>
@@ -176,20 +187,42 @@ export function ResourceLibrary({
                     className={cn(
                       "flex shrink-0 cursor-pointer items-center gap-3 rounded-xl border px-2.5 py-2 text-left transition-colors duration-150",
                       current
-                        ? "border-sidebar bg-sidebar text-sidebar-fg shadow-sm"
+                        ? "border-primary bg-primary-subtle text-accent-text"
                         : "border-border bg-surface hover:bg-surface-2 lg:border-transparent lg:bg-transparent",
                       query && count === 0 && "opacity-50",
                     )}
                   >
-                    <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", current ? "bg-sidebar-accent-bg text-sidebar-fg" : "bg-primary-subtle text-accent-text")} aria-hidden="true">
+                    <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", current ? "bg-surface text-accent-text" : "bg-primary-subtle text-accent-text")} aria-hidden="true">
                       <TypeIcon type={type} className="size-4" />
                     </span>
                     <span className={cn("whitespace-nowrap text-sm font-semibold lg:flex-1", !current && "text-text")}>{meta.plural}</span>
-                    <span className={cn("grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-xs font-bold tabular-nums", current ? "bg-sidebar-accent-bg text-sidebar-fg" : "bg-surface-3 text-text")}>{count}</span>
+                    <span className={cn("grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-xs font-bold tabular-nums", current ? "bg-surface text-accent-text" : "border border-border text-text-muted")}>{count}</span>
                   </button>
                 );
               })}
             </nav>
+            {/* Tag facets (2026-10-08): one click searches #tag; the search box shows it. */}
+            {usedTags.length ? (
+              <div className="hidden flex-col gap-2 rounded-2xl border border-border bg-card p-3 lg:flex">
+                <p className="px-1 text-2xs font-bold tracking-[0.08em] text-text-subtle uppercase">Tags</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {usedTags.map(([tag, count]) => {
+                    const on = query === `#${tag}`;
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setSearch(on ? "" : `#${tag}`)}
+                        className={cn("inline-flex h-8 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition-colors duration-150", on ? "border-primary bg-primary-subtle text-accent-text" : "border-border text-text hover:border-border-strong")}
+                      >
+                        #{tag}<span className="font-medium text-text-subtle tabular-nums">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </aside>
 
           {/* Panel: the selected type. */}
@@ -199,12 +232,11 @@ export function ResourceLibrary({
               style={{ "--type": TYPE_ACCENT } as React.CSSProperties}
               className="wl-card min-w-0 overflow-hidden"
             >
-              {/* Navy header band: the type you're viewing is the page's dark anchor. */}
-              <header className="flex items-center gap-3 bg-sidebar px-4 py-4 text-sidebar-fg md:px-5">
-                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-sidebar-accent-bg text-sidebar-fg" aria-hidden="true"><TypeIcon type={active} className="size-5" /></span>
+              <header className="flex items-center gap-3 border-b border-border px-4 py-4 md:px-5">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary-subtle text-accent-text" aria-hidden="true"><TypeIcon type={active} className="size-5" /></span>
                 <div className="min-w-0 flex-1">
-                  <h2 id="resources-panel-title" className="text-xl font-bold leading-tight">{typeMeta(active).plural}</h2>
-                  <p className="text-sm text-sidebar-muted">{items.length} {items.length === 1 ? "resource" : "resources"}{query ? " match" : ""}</p>
+                  <h2 id="resources-panel-title" className="text-xl font-semibold leading-tight tracking-[-0.02em] text-text">{typeMeta(active).plural}</h2>
+                  <p className="text-sm text-text-muted">{items.length} {items.length === 1 ? "resource" : "resources"}{query ? " match" : ""}</p>
                 </div>
                 <Button size="sm" variant="secondary" onClick={() => setComposer({ type: active })}>
                   <Plus aria-hidden="true" />
@@ -219,7 +251,8 @@ export function ResourceLibrary({
                     {items.map((resource) => <CodeLine key={resource.id} resource={resource} onEdit={() => setComposer({ type: resource.type, resource })} />)}
                   </ul>
                 ) : (
-                  <ul data-reveal-stagger className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  // Masonry: a long description doesn't leave a hole beside a short one.
+                  <ul className="columns-1 gap-3 md:columns-2 xl:columns-3 [&>li]:mb-3 [&>li]:break-inside-avoid">
                     {items.map((resource) => <ResourceCard key={resource.id} resource={resource} onEdit={() => setComposer({ type: resource.type, resource })} />)}
                   </ul>
                 )}
@@ -449,7 +482,7 @@ function ResourceCard({ resource, onEdit }: { resource: ResourceItem; onEdit: ()
   const { remove, pending, dialog } = useRemove(resource);
   const host = resource.url ? safeHost(resource.url) : undefined;
   return (
-    <li className="group relative flex min-w-0 flex-col gap-2.5 rounded-xl border border-[color-mix(in_srgb,var(--type)_35%,var(--c-surface))] bg-surface p-4 transition-[border-color,box-shadow] duration-150 hover:border-[var(--type)] hover:shadow-md">
+    <li className="group relative flex min-w-0 flex-col gap-2.5 rounded-xl border border-[color-mix(in_srgb,var(--type)_35%,var(--c-surface))] bg-surface p-4 transition-[border-color,box-shadow] duration-150 hover:border-[var(--type)]">
       <div className="flex min-w-0 items-start gap-3">
         {/* Bare icon, no tile behind it. */}
         <span className="mt-0.5 inline-flex shrink-0 text-accent-text" aria-hidden="true">

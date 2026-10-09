@@ -32,9 +32,9 @@ function portalContainer(): HTMLElement {
 
 const theme = createTheme({
   palette: {
-    primary: { main: "#4562c9", contrastText: "#ffffff" },
-    secondary: { main: "#2a2c3f", contrastText: "#ffffff" },
-    text: { primary: "#2a2c3f", secondary: "#575c72" },
+    primary: { main: "#0369a1", contrastText: "#ffffff" },
+    secondary: { main: "#1e293b", contrastText: "#ffffff" },
+    text: { primary: "#0f172a", secondary: "#475569" },
   },
   shape: { borderRadius: 10 },
   typography: { fontFamily: "inherit" },

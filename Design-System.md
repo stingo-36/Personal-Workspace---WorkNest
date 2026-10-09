@@ -5,7 +5,7 @@
 > and `app/src/app/(auth)/auth-motion.css` (login / register). This file explains the system and the rules. If you change a token,
 > update the table here in the same change.
 >
-> Last synced with the codebase: **2026-10-07**
+> Last synced with the codebase: **2026-10-09**
 
 ---
 
@@ -26,43 +26,91 @@ and `--pf-*` night values still exist in the CSS, but **nothing applies the `.da
 class** — treat them as dormant. Don't build new dark-mode UI unless dark mode is
 reintroduced on purpose (and then update this file and `Memory.md`).
 
-## 2. Workspace palette (`.app-shell`) — the homepage palette
+## 2. Workspace palette (`.app-shell`) — Slate & Sky
 
-Since 2026-10-03 the logged-in app uses **the homepage palette** (replacing
-charcoal/teal/navy): ink `#2a2c3f`, muted `#575c72`, page `#f3f5f9`, white cards, and the
-homepage tones purple `#9b5cf0`, blue `#7d9cf4`, pink `#f58ea8`, orange `#f8aa4b`, red
-`#ec6f6f`. The light tones can't carry text, so text and fills use **deeper shades of the
-same hues** (all ≥4.5:1 on white): blue `#4562c9` / `#3d57b6` / `#33499a`, pink `#b8395f`,
-red `#c43e3e`, orange `#9a560f`. Tints are ~10% hue on white. **The accent is blue** —
-purple was tried first and rejected by the user (2026-10-03); don't reintroduce it.
+Since 2026-10-08 the logged-in app uses **Slate & Sky** (picked from an 18-palette
+redesign canvas; replaced the homepage palette of 2026-10-03): dark slate chrome, a sky
+accent, a **white page**, and **visible borders** so every section's edge reads clearly —
+no grey boxes behind sections. Status, tracker and priority hues (red / orange / pink /
+green) are unchanged. Purple stays banned (user decision 2026-10-03).
 
 | Token | Value | Use |
 |---|---|---|
-| `--c-bg` | `#f3f5f9` | page canvas (homepage page colour) |
+| `--c-bg` | `#ffffff` | page canvas — white only |
 | `--c-surface` / `--c-card` | `#ffffff` | inputs, menus, cards |
-| `--c-surface-2` | `#eef0f6` | toolbars, insets, hover |
-| `--c-surface-3` | `#e4e6ef` | pressed / selected |
-| `--c-card-tint` | `#f2f5fe` | blue emphasis card |
-| `--c-card-navy` | `#eef1fb` | softer blue emphasis card (name is historical) |
-| `--c-text` | `#2a2c3f` | headings, primary values (13.7:1) |
-| `--c-text-muted` | `#575c72` | descriptions (6.6:1) |
-| `--c-text-subtle` | `#62677d` | sublabels, hints, timestamps (5.6:1) |
-| `--c-border` | `#dcdfe8` | decorative card edges, dividers |
-| `--c-border-strong` | `#8b90a3` | **functional** control edges (3.2:1) |
-| `--c-primary` | `#4562c9` | fills, icons, accents (white 5.5:1) |
-| `--c-primary-strong` / `--c-accent-text` | `#3d57b6` | links, small labels (6.5:1) |
-| `--c-primary-hover` / `-active` | `#3d57b6` / `#33499a` | states |
-| `--c-primary-subtle` | `#e3e9fc` | selected state |
-| `--c-ring` | `#5f7de6` | focus ring (homepage blue, a step deeper for 3:1) |
-| `--c-sidebar` (+`-2`,`-3`) | `#2a2c3f` / `#34374d` / `#3e4159` | **ink chrome**: primary buttons, work-log hero, dark card heads (like the homepage's dark pills) |
-| `--c-sidebar-fg` / `-muted` / `-subtle` | `#fff` / `#d6d7e3` / `#a7a9bd` | text on ink |
-| `--c-overlay` | `rgba(42,44,63,.55)` | ink scrim behind dialogs |
-| `--c-danger` / `--c-warning` / `--c-info` | `#c43e3e` / `#9a560f` / `#4562c9` | feedback (deepened homepage red / orange / blue); success stays green `#15803d` |
+| `--c-surface-2` | `#f1f5f9` | hover, toolbars (sparingly — not as section fills) |
+| `--c-surface-3` | `#e2e8f0` | pressed / selected |
+| `--c-card-tint` | `#f0f9ff` | sky emphasis card |
+| `--c-card-navy` | `#e0f2fe` | stronger sky emphasis card (name is historical) |
+| `--c-text` | `#0f172a` | headings, primary values (17.8:1) |
+| `--c-text-muted` | `#475569` | descriptions (7.6:1) |
+| `--c-text-subtle` | `#64748b` | sublabels, hints, timestamps (4.8:1) |
+| `--c-border` | `#94a3b8` | card and section edges, dividers — deliberately visible |
+| `--c-border-strong` | `#64748b` | **functional** control edges (4.8:1) |
+| `--c-primary` | `#0369a1` | sky — fills, icons, **primary buttons** (white 5.9:1) |
+| `--c-primary-strong` / `--c-accent-text` | `#075985` | links, small labels (7.6:1) |
+| `--c-primary-hover` / `-active` | `#075985` / `#0c4a6e` | states |
+| `--c-primary-subtle` | `#e0f2fe` | selected state, tints |
+| `--c-ring` | `#0284c7` | focus ring |
+| `--c-sidebar` (+`-2`,`-3`) | `#1e293b` / `#273449` / `#334155` | **slate chrome**: the bottom dock, page header bands, dark card heads |
+| `--c-sidebar-fg` / `-muted` / `-subtle` | `#fff` / `#cbd5e1` / `#94a3b8` | text on slate |
+| `--c-overlay` | `rgba(15,23,42,.55)` | slate scrim behind dialogs |
+| `--c-danger` / `--c-warning` / `--c-info` | `#c43e3e` / `#9a560f` / `#0369a1` | feedback; success stays green `#15803d` |
 
-The header re-points the chrome tokens to white: ink text, muted labels, a blue active
-underline (`#4562c9`) with **no fill behind the active tab**, hairline `#dcdfe8`. MUI
-(`components/ui/mui-provider.tsx`) uses the same blue/ink. Per-icon colours (`--c-ic-*`)
-map onto the deepened homepage hues (names kept; green/cyan/violet/teal → blue). The name `--c-sidebar-*` is historical.
+The header is a **dark slate bar** (`#1e293b`): idle sections `#cbd5e1`, hover a 8% white
+wash, and the current section a **white pill with slate text** (`--c-sidebar-accent-bg`
+`#fff`, `--c-sidebar-accent` `#1e293b`); the avatar is a sky circle. MUI
+(`components/ui/mui-provider.tsx`) uses the same sky/slate. Per-icon colours (`--c-ic-*`)
+map onto sky `#0369a1` (green/cyan/violet/teal/blue), deep sky `#075985` (indigo), slate
+`#475569`, and the unchanged red/orange/amber/pink. The name `--c-sidebar-*` is historical.
+### Work Logs deck (2026-10-09)
+
+`/work-logs` does **not** use `PageBand`. It follows the owner's mockup: `.wl-deck`
+(globals.css) scopes a teal-and-ink palette to the page (primary `#13706a`, ink
+`#0f2b2a` via `--c-sidebar`, amber `--c-warning-subtle` / `--c-wl-dash` / `--c-wl-amber`,
+page `--c-wl-page`), a display title (`.wl-title`) and day numeral (`.wl-numeral`) sized
+with `clamp()` above the app scale. Day columns are `.wl-col[data-state]`; the open one
+grows by animating `flex-grow` (600ms smooth-out), its sections fade up in sequence
+(`.wl-reveal`). The page fits between the top of the screen and the dock from lg.
+All motion stops under `prefers-reduced-motion`.
+
+### Page header band (2026-10-09)
+
+Every list page starts with **`PageBand`** (`components/shell/page-band.tsx`): a band
+flush under the nav, full-bleed, in the nav's own slate (`.wl-band` re-points the
+chrome tokens exactly like `.app-header`, so the two read as one block), rounded at
+the bottom. Left: eyebrow, title, optional extra (e.g. Work Logs' day chips), stat
+counts. Right: actions. Controls on the band look like nav pills: `bandButton` (the
+active white pill) for buttons, and MUI `Input` / `Select` with **`tone="band"`**
+(`components/ui/band-sx.ts`) for fields — all fields stay MUI. Used on Work Logs,
+Tickets, Tracker, Notes, Resources, Favourites, Profile, Achievements and Reports;
+document pages (note reader, work-log editor/detail) keep their own headers. Work Logs,
+Tickets and Tracker also **fit the screen** from lg (`.wl-fit`): a bordered list panel
+plus a bordered detail panel (`rounded-2xl border border-border bg-surface`); inner
+boxes are white with a border too — **no shadows, no tinted boxes** (2026-10-09).
+
+### Page layouts (2026-10-08 redesign)
+
+Every workspace page has its **own layout pattern** (owner's request: "don't use the same
+components"); keep them distinct when adding to a page:
+
+| Page | Pattern |
+|---|---|
+| Tracker | band with **tab pills** + search → **list panel** (sticky uppercase group labels, rows) + **detail panel** (Needs you by default; opened entry or new-item form) |
+| Work Logs | split hero (form + slate sprint card with ring) → **vertical timeline** per sprint |
+| Work-log editor | action strip → **one document** (`.wl-doc` turns section cards into ruled chapters) + margin outline |
+| Work-log detail | **slate details panel** (`.wl-hero` tokens) + bento of cards |
+| Tickets | toolbar with status stacked bar → **table + drawer** (viewport-fit at xl) |
+| Favourites | **bento** grid |
+| Notes | **bookshelf** of accent-coloured covers |
+| Note reader | **three-column docs** (contents · page · on this page at xl) |
+| Resources | **facet sidebar** (types + tags) + masonry |
+| Profile | identity header → **horizontal tab bar** → label/control rows |
+| Achievements | totals strip → **centred rail, alternating cards** from lg |
+| Reports | **sprint card rail** → paper on a desk |
+
+Breakpoints are `xs 360 · md 768 · lg 1024 · xl 1440` — there is **no `sm` or `2xl`**.
+
 ### Feedback, status, priority, tracker tones
 
 - **Feedback:** `danger #dc2626`, `success #15803d`, `warning #b45309`, `info #1d4ed8`,
@@ -219,17 +267,17 @@ are historical; the values are the deepened homepage hues (no purple, no teal):
 
 | Token | Hex | Meaning (icons) |
 |---|---|---|
-| `--c-ic-blue` | `#4562c9` | dates, time, messages (calendar-*, clock, mail, send, message-*) |
-| `--c-ic-violet` | `#4562c9` | tickets, boards (ticket, folder-kanban, square-terminal…) |
+| `--c-ic-blue` | `#0369a1` | dates, time, messages (calendar-*, clock, mail, send, message-*) |
+| `--c-ic-violet` | `#0369a1` | tickets, boards (ticket, folder-kanban, square-terminal…) |
 | `--c-ic-amber` | `#9a560f` | notes, ideas, favourites (file-text, sticky-note, lightbulb, star) |
-| `--c-ic-green` | `#4562c9` | done, add (check, list-checks, plus, upload) |
+| `--c-ic-green` | `#0369a1` | done, add (check, list-checks, plus, upload) |
 | `--c-ic-red` | `#c43e3e` | delete, alerts, sign out |
 | `--c-ic-orange` | `#b8661a` | edit, tools (pencil, highlighter, wrench, briefcase) |
-| `--c-ic-cyan` | `#4562c9` | people, places (user*, users, building, plane, globe) |
-| `--c-ic-indigo` | `#3a52a8` | links, library, code (link-*, library-big, app-window…) |
+| `--c-ic-cyan` | `#0369a1` | people, places (user*, users, building, plane, globe) |
+| `--c-ic-indigo` | `#075985` | links, library, code (link-*, library-big, app-window…) |
 | `--c-ic-pink` | `#b8395f` | tags |
-| `--c-ic-teal` | `#4562c9` | search, view, copy, lock |
-| `--c-ic-slate` | `#575c72` | structural glyphs (chevrons, ×, grip, arrows, editor toolbar) |
+| `--c-ic-teal` | `#0369a1` | search, view, copy, lock |
+| `--c-ic-slate` | `#475569` | structural glyphs (chevrons, ×, grip, arrows, editor toolbar) |
 
 All ≥ 4.2:1 on white and `surface-2`. **Exceptions** (icon keeps `currentColor`):
 anything inside a solid fill — `.bg-sidebar`, `.wl-hero`, `.bg-primary`, `.bg-danger`,
@@ -294,7 +342,7 @@ What the eye should hit, in order — one step per level, never two the same siz
 
 - **Breakpoints — exactly four:** `xs` 360 · `md` 768 · `lg` 1024 · `xl` 1440.
   **`sm:` and `2xl:` do not exist** (reset on purpose).
-- **Shell:** top nav bar, **64px at every size, always one line** (no sidebar).
+- **Shell (2026-10-09):** no top bar and no sidebar — a floating **bottom dock** (`.app-dock`, slate pill, active section a white pill, account avatar at the end; `--dock-clearance` is the space main keeps free under it). Phones: icon over label, avatar floats top-right (`.app-account`).
   The bar is **white** (2026-10-03 values): `.app-header` re-points the `--c-sidebar-*`
   tokens locally (fg ink `#2a2c3f`, idle labels muted `#575c72`, hover `#f3f5f9`, accent
   blue `#4562c9`, hairline `#dcdfe8`), so primary buttons elsewhere stay ink. The brand
@@ -312,9 +360,11 @@ What the eye should hit, in order — one step per level, never two the same siz
 - **Radius:** `xs 3` dots · `sm 4` badges · `md 6` inputs/menu items · `lg 8` panels ·
   `xl 12` dialogs · `2xl 16` max. Buttons and chips are `rounded-full`. Work-log cards
   (`.wl-card`) use 16px.
-- **Elevation:** soft ink-tinted shadows `--sh-card`, `--sh-card-hover`, `--sh-button`,
-  `--sh-md`, `--sh-lg`, `--sh-focus`. Depth comes from borders + surface ladder first;
-  shadows are subtle.
+- **Elevation: none on the page** (owner, 2026-10-09). In `.app-shell`, `--sh-xs`,
+  `--sh-sm`, `--sh-card`, `--sh-card-hover` and `--sh-button` are `none`; surfaces are
+  separated by `--c-border` only. `--sh-md` / `--sh-lg` remain **only** for layers that
+  float over the page (menus, toasts, dialogs, the sticky Profile save bar). Don't add
+  shadows or tinted fills (`card-tint`) to in-page boxes.
 
 ## 7. Motion
 
@@ -373,9 +423,11 @@ All under `app/src/components/`. Use these before writing new markup.
 | `Toaster`, `toast` | sonner, bottom-right, max 2. Import `toast` from here, never from sonner. **Not for autosave.** |
 
 ### Shell — `shell/`
-`AppShell`, `AppNav` (white bar + blue active underline + mobile sheet + account menu), `nav-items.ts`
+`AppShell`, `AppNav` (bottom dock + account menu; `Menu side="top"` opens upwards), `nav-items.ts`
 (`PRIMARY_NAV`, `navFor(ticketsEnabled)`, `isActivePath`), `Menu` (doesn't close on a
-submit button, so form actions still fire), `PageHeader`, `ComingSoonPage`.
+submit button, so form actions still fire), `PageHeader`, `ComingSoonPage`. The nav's
+right side holds `QuickLogButton variant="nav"` (44px icon on phones, 36px icon md–lg,
+icon + label from xl).
 
 ### Feature components
 `work-log/*` (editor, sections, ticket search/card/history, save status, attachments,
@@ -384,13 +436,16 @@ To-dos card is the first item in the right rail, immediately before Attachments.
 Other feature components: `tickets/ticket-board`, `tracker/tracker-board`
 (all per-kind wording lives in `KIND_META`), `notes/*` (TipTap editors, icon picker,
 viewer, TOC), `resources/resource-library`, `profile/profile-form`, `auth/*`,
-`home/*` (homepage).
+`home/*` (homepage), `quick-log/quick-log` (`QuickLogProvider` + `useQuickLog().open(kind?)`,
+`QuickLogButton`; a `Modal size="lg"` with Choose → Paste → Review steps; review rows =
+tick box + label pill (new = success-subtle, update = primary-subtle, needs you =
+warning-subtle) + inline editor). Dialogs must render inside `.app-shell` or they fall
+back to the old default palette.
 
-Tracker starts with one `.wl-card` **Needs you** section before its tabs. At `lg` it
-splits actionable To-dos and Follow-ups into two columns; below `lg` they stack. It
-shows actual subjects (not only counts), opens an item directly, and uses the calm
-empty state when nothing needs action. Each group previews at most four rows so the
-full Tracker lists remain reachable without a long attention card pushing them away.
+Tracker's **Needs you** is the default content of the right panel (above the list
+below `lg`): a bordered four-count strip, then bordered row groups previewing at most
+four rows each with an "N more in …" link. It shows actual subjects, opens an item
+directly, and uses a calm one-line state when nothing needs action.
 
 ### CSS recipes in `globals.css`
 `.wl-card` / `.wl-card-head` (work-log card), `.wl-hero` (ink header that re-points

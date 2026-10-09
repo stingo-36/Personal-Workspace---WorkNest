@@ -201,6 +201,12 @@ model WorkLog {
   summaryGeneratedAt DateTime?
   /// OpenRouter model that wrote `summary`; null = an older code-built summary (not shown).
   summaryModel       String?
+  /// SHA-256 of the text the AI last read for this log (summary + title). Leaving the
+  /// editor regenerates only when the log's text no longer matches it.
+  aiInputHash        String?
+  /// True while `title` was written by the AI; a title the user types sets it false,
+  /// and the AI never overwrites a user's title.
+  titleGenerated     Boolean   @default(false)
   /// Stored as a UTC-midnight DateTime. One primary log per user per date.
   date          DateTime @db.Date
   createdAt     DateTime @default(now())

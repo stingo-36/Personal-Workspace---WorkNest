@@ -71,7 +71,7 @@ export function AttachmentsSection({ workLogId, initial, onCountChange }: { work
   }
 
   return (
-    <section aria-labelledby="attachments-heading" className="wl-card flex flex-col gap-3 bg-card-tint p-4 md:p-5">
+    <section aria-labelledby="attachments-heading" className="wl-card flex flex-col gap-3 p-4 md:p-5">
       <h2 id="attachments-heading" className="flex items-center gap-2 text-base font-semibold text-text">
         Attachments &amp; links
         {items.length > 0 ? <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-accent-text tabular-nums">{items.length}</span> : null}

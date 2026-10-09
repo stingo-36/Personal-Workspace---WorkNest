@@ -7,7 +7,7 @@ import { useRef, useState, useTransition } from "react";
 
 import { createAchievement, deleteAchievement, deleteAchievementFile, updateAchievement } from "@/actions/achievements";
 import { cn } from "@/components/cn";
-import { PageHeader } from "@/components/shell/page-header";
+import { PageBand, bandButton } from "@/components/shell/page-band";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -83,15 +83,16 @@ export function AchievementsBoard({ initial }: { initial: AchievementItem[] }) {
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col">
-      <PageHeader
+    <div className="flex w-full min-w-0 flex-col gap-8">
+      <PageBand
         title="Achievements"
-        description={
-          initial.length === 0
-            ? "Certifications, courses and awards — with the certificate to prove it."
-            : <>{completed} completed{initial.length > completed ? ` · ${initial.length - completed} in progress` : ""}{days ? <> · <span className="font-semibold text-text tabular-nums">{plural(days, "day")}</span> of effort</> : null}</>
-        }
-        action={initial.length > 0 ? <Button onClick={() => setEditing("new")}><Plus aria-hidden="true" />Add achievement</Button> : null}
+        eyebrow="Certifications, courses and awards — with the certificate to prove it"
+        stats={initial.length ? [
+          { value: completed, label: "completed" },
+          { value: initial.length - completed, label: "in progress" },
+          { value: days, label: "days of effort" },
+        ] : undefined}
+        actions={initial.length > 0 ? <button type="button" className={bandButton} onClick={() => setEditing("new")}><Plus aria-hidden="true" />Add achievement</button> : null}
       />
 
       {initial.length === 0 ? (
@@ -103,20 +104,24 @@ export function AchievementsBoard({ initial }: { initial: AchievementItem[] }) {
         />
       ) : (
         <div className="flex flex-col gap-10">
-          {groupByYear(initial).map(([year, items]) => (
-            <section key={year} aria-labelledby={`achievements-${year}`} className="flex flex-col gap-4">
-              <h2 id={`achievements-${year}`} className="flex items-baseline gap-3">
-                <span className="text-2xl font-semibold tracking-[-0.02em] text-text tabular-nums">{year}</span>
-                <span className="text-sm font-medium text-text-muted">{plural(items.length, "achievement")}</span>
-              </h2>
-              {/* The rail (md+): a line with one medal per entry, cards hanging off it. Phones get full-width cards. */}
-              <ol className="relative flex flex-col gap-4 md:gap-5 md:before:absolute md:before:top-2 md:before:bottom-2 md:before:left-6 md:before:w-px md:before:bg-border-strong" data-reveal-stagger>
-                {items.map((item) => (
-                  <AchievementEntry key={item.id} item={item} onEdit={() => setEditing(item)} onDelete={() => setDeleting(item)} />
-                ))}
-              </ol>
-            </section>
-          ))}
+          {groupByYear(initial).map(([year, items], groupIndex, groups) => {
+            // Alternate sides across the whole page, not per year.
+            const offset = groups.slice(0, groupIndex).reduce((sum, [, list]) => sum + list.length, 0);
+            return (
+              <section key={year} aria-labelledby={`achievements-${year}`} className="flex flex-col gap-4">
+                <h2 id={`achievements-${year}`} className="flex items-baseline gap-3 lg:justify-center">
+                  <span className="rounded-full bg-sidebar px-4 py-1 text-base font-semibold text-sidebar-fg tabular-nums">{year}</span>
+                  <span className="text-sm font-medium text-text-muted">{plural(items.length, "achievement")}</span>
+                </h2>
+                {/* The rail: on the left from md, in the centre with cards alternating sides from lg. Phones get full-width cards. */}
+                <ol className="relative flex flex-col gap-4 md:gap-5 md:before:absolute md:before:top-2 md:before:bottom-2 md:before:left-6 md:before:w-0.5 md:before:bg-border lg:before:left-1/2 lg:before:-translate-x-1/2" data-reveal-stagger>
+                  {items.map((item, index) => (
+                    <AchievementEntry key={item.id} item={item} side={(offset + index) % 2 === 0 ? "left" : "right"} onEdit={() => setEditing(item)} onDelete={() => setDeleting(item)} />
+                  ))}
+                </ol>
+              </section>
+            );
+          })}
         </div>
       )}
 
@@ -135,7 +140,7 @@ export function AchievementsBoard({ initial }: { initial: AchievementItem[] }) {
   );
 }
 
-function AchievementEntry({ item, onEdit, onDelete }: { item: AchievementItem; onEdit: () => void; onDelete: () => void }) {
+function AchievementEntry({ item, side, onEdit, onDelete }: { item: AchievementItem; side: "left" | "right"; onEdit: () => void; onDelete: () => void }) {
   const done = item.status === "Completed";
   const days = durationDays(item.startDate, item.endDate);
   const facts = [
@@ -146,18 +151,18 @@ function AchievementEntry({ item, onEdit, onDelete }: { item: AchievementItem; o
   ].filter((fact): fact is { label: string; value: string } => fact !== null);
 
   return (
-    <li className="relative grid md:grid-cols-[3rem_minmax(0,1fr)] md:gap-5">
+    <li className="relative grid md:grid-cols-[3rem_minmax(0,1fr)] md:gap-5 lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)] lg:gap-6">
       <span
         aria-hidden="true"
         className={cn(
-          "relative z-10 mt-4 hidden size-12 place-items-center rounded-full border-2 bg-surface md:grid",
+          "relative z-10 mt-4 hidden size-12 place-items-center rounded-full border-2 bg-surface md:grid lg:col-start-2 lg:row-start-1",
           done ? "border-warning text-warning" : "border-dashed border-border-strong text-text-muted",
         )}
       >
         <Award className="size-6" />
       </span>
 
-      <article className="group min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-xs transition-[border-color,box-shadow] duration-150 hover:border-primary/50 hover:shadow-sm">
+      <article className={cn("group min-w-0 overflow-hidden rounded-2xl border border-border bg-surface shadow-xs transition-[border-color,box-shadow] duration-150 hover:border-border-strong hover:shadow-sm lg:row-start-1", side === "left" ? "lg:col-start-1" : "lg:col-start-3")}>
         <div className="flex items-start gap-3 px-5 pt-4 pb-3 md:px-6">
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs font-bold tracking-[0.08em] uppercase">
@@ -190,10 +195,10 @@ function AchievementEntry({ item, onEdit, onDelete }: { item: AchievementItem; o
         ) : null}
 
         {item.files.length > 0 ? (
-          <ul className="flex flex-col divide-y divide-border border-t border-border bg-surface-2">
+          <ul className="flex flex-col divide-y divide-border border-t border-border bg-surface">
             {item.files.map((file) => (
               <li key={file.id}>
-                <a href={fileHref(file.id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-5 py-2.5 hover:bg-surface-3 md:px-6">
+                <a href={fileHref(file.id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-5 py-2.5 hover:bg-surface-2 md:px-6">
                   <FileText className="size-4 shrink-0 text-danger" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-text">{file.name}</span>

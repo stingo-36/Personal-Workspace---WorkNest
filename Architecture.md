@@ -4,7 +4,7 @@
 > delete a module, route, model or script, update the relevant section in the same
 > change.
 >
-> Last synced with the codebase: **2026-10-07**
+> Last synced with the codebase: **2026-10-09**
 
 ---
 
@@ -66,7 +66,7 @@ authenticated shell.
 |---|---|---|
 | `/` | `(marketing)/page.tsx` → `HomePage` (`components/home/*`: `home-page`, `feature-showcase`, `doodles`, `recap-avatar` (user's 3D character cut-out `public/home/recap-avatar.webp`; hidden while missing); `screen-motion` (replays each snapped screen's `[data-anim]` entrance on every arrival, direction-aware); styles `(marketing)/home.css` + `app/brand-art.css`) | public |
 | `/login`, `/register` | `(auth)/*/page.tsx` | public; redirect to `/tracker` if signed in |
-| `/work-logs` | `(app)/work-logs/page.tsx` | sprint-grouped listing |
+| `/work-logs` | `(app)/work-logs/page.tsx` | current-sprint deck (`components/work-log/sprint-deck.tsx`; `?day=`); Tracker entries per day via `listTrackerForRange` (actions/lib `follow-ups.ts`) |
 | `/work-logs/[workLogId]` | `.../page.tsx` | read-only detail + Copy as text; side rail begins with that day's Tracker to-dos |
 | `/work-logs/[workLogId]/edit` | `.../edit/page.tsx` | `WorkLogEditor` |
 | `/tickets` | `(app)/tickets/page.tsx` | `TicketBoard`; redirects to `/work-logs` if tickets disabled |
@@ -82,12 +82,14 @@ authenticated shell.
 | `/tasks`, `/links`, `/settings` | `(app)/*/page.tsx` | `ComingSoonPage` |
 | `GET/POST /api/auth/[...nextauth]` | route handler | NextAuth |
 | `POST /api/work-logs/[workLogId]/attachments` | route handler | multipart upload (field `files`) |
+| `POST /api/work-logs/[workLogId]/ai-refresh` | route handler | leave-the-editor beacon: 202 now, then `after()` regenerates the AI summary/title if the content changed |
 | `GET /api/attachments/[attachmentId]` | route handler | owner-only download |
 | `POST /api/achievements/[achievementId]/files` | route handler | certificate upload (field `files`) |
 | `GET /api/achievement-files/[fileId]` | route handler | owner-only certificate download |
 
 `(app)/layout.tsx` runs `requireUser()` + `getUserSettings()` once, wraps children in
-`MuiProvider` + `AppShell`, and passes `ticketsEnabled` to the nav. `AppShell` also
+`MuiProvider` + `AppShell`, and passes `ticketsEnabled` to the nav. `AppShell` mounts
+`QuickLogProvider` (the Quick log dialog) inside `.app-shell`. `AppShell` also
 mounts `shell/scroll-reveal.tsx` (one-shot scroll reveals for `data-reveal` /
 `data-reveal-stagger` markup — see Design-System §7).
 
@@ -126,15 +128,18 @@ browser ──► proxy.ts ──► (app)/layout.tsx ──► page.tsx (Server
 
 | File | Owns |
 |---|---|
-| `lib/worklogs.ts` | work logs, meetings (3 defaults), learning notes, attachments, days off, UTC-date helpers, `touchWorkLog`, `saveWorkLogSummaryRow` |
-| `lib/worklog-summary.ts` | AI input for one log: `workLogHasContent`, `workLogAsText` (tickets, noted meetings, Work done, the day's to-dos via `todosOnDay` in `lib/worklogs.ts`). No code-built summary |
-| `lib/ai-summary.ts` | `openRouterComplete` → `AiResult` (text/model, or an `AiFailure`: not_configured/auth/credits/rate_limited/unavailable/cut_off/bad_reply, with the model when one answered); optional `accept` to tidy/reject; one automatic retry on cut_off/bad_reply; `aiFailureMessage`; `summarizeWithOpenRouter`. **AI only — no fallback** |
-| `lib/tickets.ts` | **the critical piece** — ticket lookup/upsert, `addTicketWorkUpdate` (upsert on `(ticketId, workLogId)`), detach, standalone history, project names |
+| `lib/worklogs.ts` | work logs, meetings (3 defaults), learning notes, attachments, days off, UTC-date helpers, `touchWorkLog`, `saveWorkLogSummaryRow` (modes manual/auto/background; skips unchanged content via `aiInputHash`; retitles only default/AI titles) |
+| `lib/worklog-summary.ts` | AI input for one log: `workLogHasContent`, `workLogAsText` (tickets, Work done, the day's Tracker to-dos / follow-ups / notes; **no meetings**). No code-built summary |
+| `lib/day-tracker.ts` | `trackerOnDay` — sorts `listTrackerForRange` entries into one day (to-dos done/due/overdue/created, follow-ups, notes); shared by the Work Logs day card and the AI input |
+| `lib/ai-summary.ts` | `openRouterComplete` → `AiResult` (text/model, or an `AiFailure`: not_configured/auth/credits/rate_limited/unavailable/cut_off/bad_reply, with the model when one answered); optional `accept` to tidy/reject; `checkReasoning: false` for JSON replies (skips the reasoning-leak regex, `accept` validates instead); one automatic retry on cut_off/bad_reply; `aiFailureMessage`; `summarizeWithOpenRouter`, `titleWithOpenRouter`. **AI only — no fallback** |
+| `lib/tickets.ts` | **the critical piece** — ticket lookup/upsert, `addTicketWorkUpdate` (upsert on `(ticketId, workLogId)`), detach, standalone history, project names, `findTicketsByKeyHint` (Quick log: exact key or bare number → `*-1233`) |
+| `lib/quick-log.ts` | Quick log: `draftQuickLog` (AI → JSON read leniently with Zod, then matched to the user's tickets / meeting cards / people / channels; to-dos fall back to one per line without AI) `workLogTemplate` (headings: the day's meetings, open tickets, Work done), and `applyQuickLog` (writes via `worklogs`/`tickets`/`follow-ups` lib functions; same-day re-apply appends) |
 | `lib/workflow-status.ts` | 5-stage workflow + legacy status normalisation |
 | `lib/follow-ups.ts` | Tracker entries + append-only updates, pin, status, reschedule, tags, `listTodosAroundDay` (work-log to-dos card) |
 | `lib/note-store.ts`, `lib/notes.ts`, `lib/note-icons.ts`, `lib/note-colors.ts` | notebooks, trash/restore, icon search, accent colours |
 | `components/notes/smooth-scroll.ts`, `components/notes/doc-height.ts` | client: frame-by-frame smooth jump that follows a moving target and pauses lazy page mounting while in flight (`isJumping`, `NOTE_SCROLL_END`); estimated height for an unmounted page body. Used by the reader and the editor |
 | `lib/content.ts` | tasks, links, resources (+ favourite) |
+| `components/shell/page-band.tsx`, `components/ui/band-sx.ts` | the slate page header band (`PageBand`, `bandButton`, `bandField`) and the MUI `tone="band"` field styling |
 | `lib/sprint.ts` | **the only** sprint arithmetic (`getSprint`) — local calendar days |
 | `lib/user-lists.ts` | Profile-editable lists: `DEFAULT_LISTS`, ordered lists, project options/suggestions, tag usage + rename/delete (raw SQL, user-scoped) |
 | `lib/reports.ts` | sprint list, report data per sprint, AI-only "5-15 Report" (`generateSprintReport` → ok or failure reason; `normalizeReportBody` tolerates bold/other-level section headings and `*`/`•` bullets), staleness; model-less (old code-built) reports ignored |
@@ -156,11 +161,12 @@ browser ──► proxy.ts ──► (app)/layout.tsx ──► page.tsx (Server
 | `actions/profile.ts` | `updateProfile`, `saveAiKey`, `removeAiKey`, `saveAiModel` |
 | `actions/user-lists.ts` | Profile lists: set/reset ordered list, resource-type icon, add/remove project, add/rename/delete/delete-all tags |
 | `actions/reports.ts` | `generateReport` |
+| `actions/quick-log.ts` | `getWorkLogTemplate`, `draftQuickLog` (no writes; AI failure → `AI_UNAVAILABLE`), `applyQuickLog` (re-validated draft; revalidates work logs, tickets, tracker) |
 | `components/reports/report-format.ts` | client-safe: parse report Markdown → title/sections/groups; `reportToHtml` (doc-styled clipboard HTML), `reportToText` |
 | `actions/achievements.ts` | create, update, delete achievement; delete achievement file |
 
 Client-safe shared modules outside `lib/`: `components/work-log/day-type.ts`,
-`components/cn.ts`.
+`components/quick-log/types.ts` (Quick log draft shapes), `components/cn.ts`.
 
 ## 5. Data model (`app/prisma/schema.prisma`)
 
@@ -184,7 +190,7 @@ User ─┬─ WorkLog ─┬─ Meeting
 | Model | Key fields & invariants |
 |---|---|
 | `User` | `email` unique, `passwordHash`, profile: `sprintStartDate` (`@db.Date`, null = default), `sprintLengthDays` (14), `ticketsEnabled` (true), `openRouterKeyEnc` (sealed, never sent to client) + `openRouterKeyHint` + `openRouterModel` |
-| `WorkLog` | `date` `@db.Date` stored as UTC midnight, **`@@unique([userId, date])`**; `title`, `dayType` (Work/Holiday/Leave), `learningNotes` (Markdown), `summary` (generated Markdown, nullable) + `summaryGeneratedAt` + `summaryModel` (null = built from entries) |
+| `WorkLog` | `date` `@db.Date` stored as UTC midnight, **`@@unique([userId, date])`**; `title`, `dayType` (Work/Holiday/Leave), `learningNotes` (Markdown), `summary` (generated Markdown, nullable) + `summaryGeneratedAt` + `summaryModel` (null = built from entries); `aiInputHash` (SHA-256 of the text the AI last read) and `titleGenerated` (title written by the AI; a user edit sets it false) |
 | `Meeting` | `name`, `notes` (Markdown), `order`, `isDefault` |
 | `WorkLogAttachment` | `kind` File/Link, `name`, `url?`, `mimeType?`, `size?`, `data Bytes?` (≤10 MB). **`data` is never selected in lists** — only the download route reads it. |
 | `Ticket` | `ticketId` = human key, **`@@unique([userId, ticketId])`**; `title`, `projectName?`, `status` |
